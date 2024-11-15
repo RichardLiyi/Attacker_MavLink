@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 在下面内容中，action可选四个字段，包括offset，multiply, set, ignore
+ 对应着增加、乘以，设置或忽略为四种操作，对每个Filed选择一种实行 -->
+<AttackConfig>
+<!-- GPS spoofing -->
+    <Message type="HIL_GPS">
+        <Field name="lat" action="offset" value="1000" type="int"/>
+        <Field name="lon" action="ignore" value="1000" type="int"/>
+    </Message>
+    <!-- sensor attack -->
+<Message type="HIL_SENSOR">
+    <Field name="xacc" action="ignore" value="0" type="float"/>
+    <Field name="yacc" action="ignore" value="0" type="float"/>
+    <Field name="zacc" action="ignore" value="0.9" type="float"/>
+    <Field name="xgyro" action="ignore" value="0" type="float"/>
+    <Field name="ygyro" action="ignore" value="0" type="float"/>
+    <Field name="zgyro" action="ignore" value="0" type="float"/>
+    <Field name="xmag" action="ignore" value="0" type="float"/>
+    <Field name="ymag" action="ignore" value="0" type="float"/>
+    <Field name="zmag" action="ignore" value="0" type="float"/>
+    <Field name="abs_pressure" action="ignore" value="0" type="float"/>
+    <Field name="diff_pressure" action="ignore" value="0" type="float"/>
+    <Field name="pressure_alt" action="ignore" value="0" type="float"/>
+    <Field name="temperature" action="ignore" value="0" type="float"/>
+</Message>
+
+    <!-- actuator attack -->
+    <Message type="HIL_ACTUATOR_CONTROLS">
+    <!-- Control outputs -1 .. 1. Channel assignment depends on the simulated hardware. -->
+    <Field name="controls0" action="ignore" value="0.0" type="float"/>
+    <Field name="controls1" action="ignore" value="0.0" type="float"/>
+    <Field name="controls2" action="ignore" value="0.0" type="float"/>
+    <Field name="controls3" action="offset" value="0.5" type="float"/>
+    </Message>
+    <Message type="GLOBAL_POSITION_INT">
+    <!-- GCS spoofing. Example fields to modify lat and lon directly -->
+    <!-- In case, the spoofing logic is implemented in code directly -->
+    <Field name="lat" action="ignore" value="0" type="int"/>
+    <Field name="lon" action="ignore" value="0" type="int"/>
+</Message>
+<Message type="MISSION_ITEM_INT">
+    <Field name="x" action="offset" value="3000" type="int"/>
+    <Field name="y" action="offset" value="3000" type="int"/>
+</Message>
+<Message type="SET_POSITION_TARGET_LOCAL_NED">
+    <Field name="vx" action="multiply" value="-1" type="float"/>
+    <Field name="vy" action="multiply" value="-1" type="float"/>
+    <Field name="vz" action="ignore" value="-1" type="float"/>
+</Message>
+</AttackConfig>
