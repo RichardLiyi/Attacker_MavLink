@@ -1,5 +1,5 @@
 #! /bin/bash 
-# 当需要修改PX4参数时，就必须清除PX4日志，否则修改不会生效。
+# 当需要修改PX4参数时，就必须清除PX4日志，否则修改不会生效。 
 
 # 步骤1：启动仿真环境
 gnome-terminal -- bash -c "roslaunch px4 outdoor3.launch; exec bash"
@@ -15,9 +15,9 @@ exec bash"
 sleep 5
 
 #步骤4：启动通信中继节点:
-gnome-terminal -- bash -c "/usr/bin/python /home/ros/00-MavLinkAttacker/00-攻击文件/multirotor_communication.py iris 0"
+gnome-terminal -- bash -c "/usr/bin/python /home/ros/Attacker_MavLink/00-攻击文件/multirotor_communication.py iris 0"
 sleep 5
 
 # 步骤5：无人机飞行控制脚本
-gnome-terminal -- bash -c "/usr/bin/python /home/ros/00-MavLinkAttacker00-攻击文件/multirotor_control.py iris 1 pose"
+gnome-terminal -- bash -c "/usr/bin/python /home/ros/Attacker_MavLink/00-攻击文件/multirotor_control.py iris 1 pose"
 sleep 5
