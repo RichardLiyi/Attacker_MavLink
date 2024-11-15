@@ -15,9 +15,9 @@ exec bash"
 sleep 5
 
 #步骤4：启动通信中继节点:
-gnome-terminal -- bash -c "/usr/bin/python /home/ros/00-攻击文件/60分钟-30次多段上升-悬停/multirotor_communication.py iris 0"
+gnome-terminal -- bash -c "/usr/bin/python /home/ros/Attacker_MavLink/00-攻击文件/60分钟-30次多段上升-悬停/multirotor_communication.py iris 0"
 sleep 5
 
 # 步骤5：无人机飞行控制脚本
-gnome-terminal -- bash -c "/usr/bin/python /home/ros/00-攻击文件/60分钟-30次多段上升-悬停/60min-UpAndHover.py iris 1 vel"
+gnome-terminal -- bash -c "/usr/bin/python /home/ros/Attacker_MavLink/00-攻击文件/60分钟-30次多段上升-悬停/60min-UpAndHover.py iris 1 vel"
 sleep 5
