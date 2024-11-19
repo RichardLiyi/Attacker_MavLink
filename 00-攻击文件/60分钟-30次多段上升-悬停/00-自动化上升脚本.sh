@@ -7,7 +7,7 @@ sleep 5
 
 # 步骤2：启动MAVProxy中继
 # python mavproxy.py --master=tcpin:127.0.0.1:4561 --out=tcp:127.0.0.1:4560 --cmd='module load attack; script auto_attack.scr'; \
-gnome-terminal --working-directory=/home/ros/Attacker/MAVProxy -- bash -c "\
+gnome-terminal --working-directory=/home/ros/Attacker_MavLink/Attacker/MAVProxy -- bash -c "\
 source /home/ros/anaconda3/etc/profile.d/conda.sh; \
 conda activate mavproxy; \
 python mavproxy.py --master=tcpin:127.0.0.1:4561 --out=tcp:127.0.0.1:4560 --cmd='module load attack'; \
