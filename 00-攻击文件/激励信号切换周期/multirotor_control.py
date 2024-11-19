@@ -21,8 +21,8 @@ leftward = 0.0
 upward = 0.0
 angular = 0.0
 
-target_x = 1
-target_y = 4
+target_x = 0
+target_y = 0
 target_z = 1.2
 cmd = ''
 
@@ -185,7 +185,7 @@ if control_type == 'pose':
 
     set_hover()
     vel_public(twist)  # 发布无人机状态
-    rospy.sleep(10)  # 悬停30秒
+    rospy.sleep(5)  # 悬停30秒
 
     # 从ROS获取实际高度，赋值给 target_z
     try:
@@ -194,8 +194,9 @@ if control_type == 'pose':
         target_z = current_height_msg.position.z  # 获取当前位置的高度
         print("Initial height from ROS: {:.2f}m".format(target_z))
     except rospy.ROSException as e:
-        print("Failed to get height from ROS, using default target_z: {:.2f}m".format(target_z))
         target_z = 3.87  # 如果获取失败，保持初始高度
+        print("Failed to get height from ROS, using default target_z: {:.2f}m".format(target_z))
+
 
     pose_control_flag = True  # 启动坐标控制
 
