@@ -35,7 +35,6 @@ sleep 5
 
 # 第四步：运行无人机飞行控制脚本
 echo "正在运行无人机飞行控制脚本..."
-run_in_new_tab "无人机飞行控制" "/usr/bin/python ${SCRIPT_DIR}/multirotor_control.py iris 1 vel"
-sleep 5
+run_in_new_tab "无人机飞行控制" "/usr/bin/python ${SCRIPT_DIR}/multirotor_control.py iris 1 pose"
 
 echo "脚本完成，所有步骤已启动。"
