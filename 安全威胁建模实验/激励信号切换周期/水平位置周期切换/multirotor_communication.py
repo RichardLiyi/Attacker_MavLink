@@ -104,7 +104,7 @@ class Communication:
         return target_raw_pose
 
     def cmd_pose_flu_callback(self, msg):
-        self.coordinate_frame = 1
+        self.coordinate_frame = 1  # 1 代表 ENU 坐标系
         self.motion_type = 0
         yaw = self.q2yaw(msg.orientation)
         self.target_motion = self.construct_target(x=msg.position.x,y=msg.position.y,z=msg.position.z,yaw=yaw)

@@ -28,7 +28,7 @@ leader_cmd_vel_pub = None
 def init_publishers(multirotor_type, multirotor_num):
     """初始化发布器"""
     global cmd_pose_publishers, cmd_vel_publishers, cmd_publishers, leader_cmd_vel_pub
-    cmd_pose_publishers = [rospy.Publisher('/xtdrone/' + multirotor_type + '_' + str(i) + '/cmd_pose_flu', Pose, queue_size=1)
+    cmd_pose_publishers = [rospy.Publisher('/xtdrone/' + multirotor_type + '_' + str(i) + '/cmd_pose_enu', Pose, queue_size=1)
                            for i in range(multirotor_num)]
     cmd_vel_publishers = [rospy.Publisher('/xtdrone/' + multirotor_type + '_' + str(i) + '/cmd_vel_flu', Twist, queue_size=1)
                           for i in range(multirotor_num)]
