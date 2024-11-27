@@ -168,13 +168,18 @@ def alternate_y_change(step=1.5, duration=30 * 60 // 1.5):
 
 
 def main():
-    if len(sys.argv) != 4:
-        rospy.logerr("参数不足！用法: gpt_control.py <multirotor_type> <multirotor_num> <control_type>")
+    if len(sys.argv) != 5:
+        rospy.logerr("参数不足！用法: gpt_control.py <multirotor_type> <multirotor_num> <control_type> <coord_type>")
         return
 
     multirotor_type = sys.argv[1]
     multirotor_num = int(sys.argv[2])
     control_type = sys.argv[3]
+    coord_type = sys.argv[4].lower()
+
+    if coord_type not in ['x', 'y']:
+        rospy.logerr("坐标类型必须是 'x' 或 'y'")
+        return
 
     rospy.init_node(multirotor_type + '_multirotor_control', anonymous=True)
     init_publishers(multirotor_type, multirotor_num)
@@ -205,18 +210,12 @@ def main():
         global pose_control_flag
         pose_control_flag = True
 
-        # 用户选择坐标变换类型
-        coord_choice = input("请选择坐标变换类型 (x/y): ").lower().strip()
-        while coord_choice not in ['x', 'y']:
-            print("无效的输入，请输入 'x' 或 'y'")
-            coord_choice = input("请选择坐标变换类型 (x/y): ").lower().strip()
-
-        # 根据用户选择执行相应的坐标变换
-        if coord_choice == 'x':
-            print("开始X坐标变换...")
+        # 根据命令行参数执行相应的坐标变换
+        if coord_type == 'x':
+            rospy.loginfo("开始X坐标变换...")
             alternate_x_change()
         else:
-            print("开始Y坐标变换...")
+            rospy.loginfo("开始Y坐标变换...")
             alternate_y_change()
 
         # 停止控制

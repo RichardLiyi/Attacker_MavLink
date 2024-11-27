@@ -33,8 +33,28 @@ echo "正在启动通信中继节点..."
 run_in_new_tab "通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/multirotor_communication.py iris 0"
 sleep 3
 
+# 提示用户选择坐标类型
+echo "请选择坐标变换类型:"
+echo "1. X坐标变换"
+echo "2. Y坐标变换"
+read -p "请输入选项 (1/2): " choice
+
+# 根据用户选择设置坐标类型
+case $choice in
+    1)
+        coord_type="x"
+        ;;
+    2)
+        coord_type="y"
+        ;;
+    *)
+        echo "无效的选择！请选择 1 或 2"
+        exit 1
+        ;;
+esac
+
 # 第四步：运行无人机飞行控制脚本
 echo "正在运行无人机飞行控制脚本..."
-run_in_new_tab "无人机飞行控制" "/usr/bin/python ${SCRIPT_DIR}/x-y-control.py iris 1 pose"
+run_in_new_tab "无人机飞行控制" "/usr/bin/python ${SCRIPT_DIR}/x-y-control.py iris 1 pose $coord_type"
 
 echo "脚本完成，所有步骤已启动。"
