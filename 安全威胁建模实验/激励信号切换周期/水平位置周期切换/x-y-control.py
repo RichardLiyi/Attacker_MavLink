@@ -143,28 +143,29 @@ def alternate_height_change(step=0.3, duration=30 * 60):
         direction *= -1
         rospy.sleep(1)
 
-def alternate_x_change(step=2.0, duration=30 * 60 // 2.0):
-    """交替变换X坐标"""
+
+def alternate_east_change(step=1.5, duration=30 * 60 // 1.5):
+    """交替变换东向位置（对应PX4日志中的Y轴）"""
     global target_x
     direction = 1
     for _ in range(int(duration)):
         target_x += step * direction
-        rospy.loginfo("当前X坐标: %.2f", target_x)
+        rospy.loginfo("当前East坐标(PX4中的Y): %.2f", target_x)
         publish_pose(Pose())
         direction *= -1
-        rospy.sleep(2.0)
+        rospy.sleep(1.5)
 
 
-def alternate_y_change(step=1.5, duration=30 * 60 // 1.5):
-    """交替变换Y坐标"""
+def alternate_north_change(step=0.5, duration=30 * 60 // 0.5):
+    """交替变换北向位置（对应PX4日志中的X轴）"""
     global target_y
     direction = 1
     for _ in range(int(duration)):
         target_y += step * direction
-        rospy.loginfo("当前Y坐标: %.2f", target_y)
+        rospy.loginfo("当前North坐标(PX4中的X): %.2f", target_y)
         publish_pose(Pose())
         direction *= -1
-        rospy.sleep(1.5)
+        rospy.sleep(0.5)
 
 
 def main():
@@ -177,8 +178,8 @@ def main():
     control_type = sys.argv[3]
     coord_type = sys.argv[4].lower()
 
-    if coord_type not in ['x', 'y']:
-        rospy.logerr("坐标类型必须是 'x' 或 'y'")
+    if coord_type not in ['east', 'north']:
+        rospy.logerr("坐标类型必须是 'east' 或 'north'")
         return
 
     rospy.init_node(multirotor_type + '_multirotor_control', anonymous=True)
@@ -211,12 +212,12 @@ def main():
         pose_control_flag = True
 
         # 根据命令行参数执行相应的坐标变换
-        if coord_type == 'x':
-            rospy.loginfo("开始X坐标变换...")
-            alternate_x_change()
+        if coord_type == 'east':
+            rospy.loginfo("开始East坐标变换...")
+            alternate_east_change()
         else:
-            rospy.loginfo("开始Y坐标变换...")
-            alternate_y_change()
+            rospy.loginfo("开始North坐标变换...")
+            alternate_north_change()
 
         # 停止控制
         pose_control_flag = False
