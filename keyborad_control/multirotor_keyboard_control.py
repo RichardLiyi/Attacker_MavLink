@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import rospy
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Pose
 from std_msgs.msg import String
 import sys
 import select
@@ -29,6 +29,7 @@ class MultirotorKeyboardController:
         self.cmd_vel_mask = False
         self.ctrl_leader = False
         self.is_hovering = False
+        self.pose_control_flag = False
         
         # Movement states
         self.forward = 0.0
@@ -39,7 +40,8 @@ class MultirotorKeyboardController:
         # Target position
         self.target_x = 0.0
         self.target_y = 0.0
-        self.target_z = 0.0
+        self.target_z = self.TARGET_HOVER_HEIGHT
+        self.pose = Pose()
         
         # Store parameters
         self.multirotor_type = multirotor_type
@@ -47,7 +49,7 @@ class MultirotorKeyboardController:
         self.control_type = control_type
         
         # Initialize ROS node
-        rospy.init_node(f'{multirotor_type}_multirotor_keyboard_control')
+        rospy.init_node('{}_multirotor_keyboard_control'.format(multirotor_type))
         
         # Setup publishers
         self._setup_publishers()
@@ -62,22 +64,27 @@ class MultirotorKeyboardController:
         """Setup ROS publishers based on control type."""
         if self.control_type == 'vel':
             self.multi_cmd_vel_flu_pub = [
-                rospy.Publisher(f'/xtdrone/{self.multirotor_type}_{i}/cmd_vel_flu', Twist, queue_size=1)
+                rospy.Publisher('/xtdrone/{0}_{1}/cmd_vel_flu'.format(self.multirotor_type, i), Twist, queue_size=1)
                 for i in range(self.multirotor_num)
             ]
             self.multi_cmd_pub = [
-                rospy.Publisher(f'/xtdrone/{self.multirotor_type}_{i}/cmd', String, queue_size=3)
+                rospy.Publisher('/xtdrone/{0}_{1}/cmd'.format(self.multirotor_type, i), String, queue_size=3)
+                for i in range(self.multirotor_num)
+            ]
+            self.multi_pose_pub = [
+                rospy.Publisher('/xtdrone/{0}_{1}/pose_cmd'.format(self.multirotor_type, i), Pose, queue_size=1)
                 for i in range(self.multirotor_num)
             ]
             self.leader_cmd_vel_flu_pub = rospy.Publisher("/xtdrone/leader/cmd_vel_flu", Twist, queue_size=1)
             self.leader_cmd_pub = rospy.Publisher("/xtdrone/leader/cmd", String, queue_size=1)
+            self.leader_pose_pub = rospy.Publisher("/xtdrone/leader/pose_cmd", Pose, queue_size=1)
         else:
             self.multi_cmd_accel_flu_pub = [
-                rospy.Publisher(f'/xtdrone/{self.multirotor_type}_{i}/cmd_accel_flu', Twist, queue_size=1)
+                rospy.Publisher('/xtdrone/{0}_{1}/cmd_accel_flu'.format(self.multirotor_type, i), Twist, queue_size=1)
                 for i in range(self.multirotor_num)
             ]
             self.multi_cmd_pub = [
-                rospy.Publisher(f'/xtdrone/{self.multirotor_type}_{i}/cmd', String, queue_size=1)
+                rospy.Publisher('/xtdrone/{0}_{1}/cmd'.format(self.multirotor_type, i), String, queue_size=1)
                 for i in range(self.multirotor_num)
             ]
             self.leader_cmd_accel_flu_pub = rospy.Publisher("/xtdrone/leader/cmd_accel_flu", Twist, queue_size=1)
@@ -101,13 +108,15 @@ class MultirotorKeyboardController:
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist:
                 key = sys.stdin.read(1)
-            else:
-                key = ''
+                if key == '\x1b':  # 
+                    rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                    if rlist:
+                        key = sys.stdin.read(2)
+                        return key.encode()
+                return key.encode()
+            return None
+        finally:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
-            return key
-        except Exception as e:
-            print(f"Error reading keyboard input: {e}")
-            return ''
 
     def print_instructions(self):
         """Print control instructions based on current mode."""
@@ -137,6 +146,7 @@ v/n : takeoff/land
 b   : offboard
 s/k : hover and remove the mask of keyboard control
 g   : control all drones
+p   : toggle pose control mode
 CTRL-C to quit
 """)
 
@@ -165,6 +175,7 @@ s/k : hover and remove the mask of keyboard control
 2   : fly to specified position (x,y,z)
 3-9 : extendable mission
 g   : control the leader
+p   : toggle pose control mode
 CTRL-C to quit
 """)
 
@@ -183,12 +194,12 @@ CTRL-C to quit
             print("Invalid input! Please enter numeric values.")
             return None
         except Exception as e:
-            print(f"Error reading input: {e}")
+            print("Error reading input: %s" % e)
             return None
 
     def fly_to_position(self, x, y, z):
         """Fly to specified position."""
-        print(f"\nFlying to position: ({x:.2f}, {y:.2f}, {z:.2f})")
+        print("\nFlying to position: (%.2f, %.2f, %.2f)" % (x, y, z))
         
         # Store target position
         self.target_x = x
@@ -228,7 +239,7 @@ CTRL-C to quit
                 else:
                     self.multi_cmd_accel_flu_pub[i].publish(twist)
         
-        print(f"Command sent. Moving to position ({x:.2f}, {y:.2f}, {z:.2f})")
+        print("Command sent. Moving to position (%.2f, %.2f, %.2f)" % (x, y, z))
 
     def update_movement(self, key):
         """Update movement based on key press."""
@@ -326,7 +337,59 @@ CTRL-C to quit
                     self.multi_cmd_accel_flu_pub[i].publish(twist)
         
         self.is_hovering = True
-        print(f"Executing one-key takeoff and hover at height {self.TARGET_HOVER_HEIGHT}m")
+        print("Executing one-key takeoff and hover at height %.2f m" % self.TARGET_HOVER_HEIGHT)
+
+    def update_pose_target(self):
+        """Update pose target based on current target position."""
+        self.pose.position.x = self.target_x
+        self.pose.position.y = self.target_y
+        self.pose.position.z = self.target_z
+        
+    def publish_pose(self):
+        """Publish pose command to all drones or leader."""
+        self.update_pose_target()
+        if self.ctrl_leader:
+            self.leader_pose_pub.publish(self.pose)
+            self.leader_cmd_pub.publish('pose_cmd')
+        else:
+            for i in range(self.multirotor_num):
+                self.multi_pose_pub[i].publish(self.pose)
+                self.multi_cmd_pub[i].publish('pose_cmd')
+
+    def process_key_input(self, key):
+        """Process keyboard input."""
+        if key == b'p':
+            self.pose_control_flag = not self.pose_control_flag
+            rospy.loginfo("Pose control mode: %s" % ('enabled' if self.pose_control_flag else 'disabled'))
+            return
+        if self.pose_control_flag:
+            # Position control mode using arrow keys
+            if key == b'[A':  # Up arrow - Forward
+                self.target_x += self.LINEAR_STEP_SIZE
+            elif key == b'[B':  # Down arrow - Backward
+                self.target_x -= self.LINEAR_STEP_SIZE
+            elif key == b'[D':  # Left arrow
+                self.target_y += self.LINEAR_STEP_SIZE
+            elif key == b'[C':  # Right arrow
+                self.target_y -= self.LINEAR_STEP_SIZE
+            elif key == b'u':  # Up in height
+                self.target_z += self.LINEAR_STEP_SIZE
+            elif key == b'm':  # Down in height
+                self.target_z -= self.LINEAR_STEP_SIZE
+            
+            if key in [b'[A', b'[B', b'[C', b'[D', b'u', b'm']:
+                self.publish_pose()
+                rospy.loginfo("Target position: x=%.2f, y=%.2f, z=%.2f" % (self.target_x, self.target_y, self.target_z))
+        else:
+            # Velocity control mode (original code)
+            self.update_movement(key)
+            self.publish_movement()
+            if key:
+                self.print_instructions()
+                print("currently:\t forward %s %.2f\t leftward %s %.2f\t upward %s %.2f\t angular %.2f" % 
+                      ('vel' if self.control_type == 'vel' else 'accel', self.forward, 
+                       'vel' if self.control_type == 'vel' else 'accel', self.leftward, 
+                       'vel' if self.control_type == 'vel' else 'accel', self.upward, self.angular))
 
     def run(self):
         """Main control loop."""
@@ -350,18 +413,10 @@ CTRL-C to quit
                         self.fly_to_position(x, y, z)
                     continue
                 
-                self.update_movement(key)
-                self.publish_movement()
+                self.process_key_input(key)
                 
-                if key:
-                    self.print_instructions()
-                    print(f"currently:\t forward {'vel' if self.control_type == 'vel' else 'accel'} {self.forward:.2f}\t "
-                          f"leftward {'vel' if self.control_type == 'vel' else 'accel'} {self.leftward:.2f}\t "
-                          f"upward {'vel' if self.control_type == 'vel' else 'accel'} {self.upward:.2f}\t "
-                          f"angular {self.angular:.2f}")
-                    
         except Exception as e:
-            print(f"Error in main control loop: {e}")
+            print("Error in main control loop: %s" % e)
         finally:
             self.cleanup()
 
@@ -376,7 +431,7 @@ CTRL-C to quit
 def main():
     """Main function."""
     if len(sys.argv) != 4:
-        print("Usage: python3 multirotor_keyboard_control.py <multirotor_type> <multirotor_num> <control_type>")
+        print("Usage: python2 multirotor_keyboard_control.py <multirotor_type> <multirotor_num> <control_type>")
         sys.exit(1)
         
     multirotor_type = sys.argv[1]
