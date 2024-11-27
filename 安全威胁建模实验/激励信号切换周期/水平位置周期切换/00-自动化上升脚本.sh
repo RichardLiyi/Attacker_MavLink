@@ -35,8 +35,8 @@ sleep 3
 
 # 提示用户选择坐标类型
 echo "请选择坐标变换类型:"
-echo "1. X坐标变换"
-echo "2. Y坐标变换"
+echo "1. East坐标变换Y"
+echo "2. East坐标变换X"
 read -p "请输入选项 (1/2): " choice
 
 # 根据用户选择设置坐标类型
