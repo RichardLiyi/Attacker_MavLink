@@ -143,7 +143,7 @@ def alternate_height_change(step=0.3, duration=30 * 60):
         direction *= -1
         rospy.sleep(1)
 
-def alternate_x_change(step=0.5, duration=30 * 60 // 0.5):
+def alternate_x_change(step=2.0, duration=30 * 60 // 2.0):
     """交替变换X坐标"""
     global target_x
     direction = 1
@@ -152,7 +152,7 @@ def alternate_x_change(step=0.5, duration=30 * 60 // 0.5):
         rospy.loginfo("当前X坐标: %.2f", target_x)
         publish_pose(Pose())
         direction *= -1
-        rospy.sleep(0.5)
+        rospy.sleep(2.0)
 
 
 def alternate_y_change(step=1.5, duration=30 * 60 // 1.5):
