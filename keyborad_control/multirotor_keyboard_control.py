@@ -183,11 +183,11 @@ CTRL-C to quit
         """Get target position from user input."""
         try:
             print("\nPlease enter the target position coordinates:")
-            print("Enter X coordinate (meters): ", end='', flush=True)
+            print "Enter X coordinate (meters): ",
             x = float(input())
-            print("Enter Y coordinate (meters): ", end='', flush=True)
+            print "Enter Y coordinate (meters): ",
             y = float(input())
-            print("Enter Z coordinate (meters): ", end='', flush=True)
+            print "Enter Z coordinate (meters): ",
             z = float(input())
             return x, y, z
         except ValueError:
