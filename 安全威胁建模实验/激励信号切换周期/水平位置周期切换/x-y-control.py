@@ -155,7 +155,7 @@ def alternate_x_change(step=0.5, duration=30 * 60 // 0.5):
         rospy.sleep(0.5)
 
 
-def alternate_y_change(step=1.0, duration=30 * 60 // 1.5):
+def alternate_y_change(step=1.5, duration=30 * 60 // 1.5):
     """交替变换Y坐标"""
     global target_y
     direction = 1
@@ -208,11 +208,11 @@ def main():
         # # 高度变换逻辑
         # alternate_height_change()
 
-         # X坐标变换逻辑
-        alternate_x_change()
+        #  # X坐标变换逻辑
+        # alternate_x_change()
         
-        #  # y坐标变换逻辑
-        # alternate_y_change()
+         # y坐标变换逻辑
+        alternate_y_change()
 
         # 停止控制
         pose_control_flag = False
