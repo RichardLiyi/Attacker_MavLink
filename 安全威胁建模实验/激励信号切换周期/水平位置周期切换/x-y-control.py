@@ -205,14 +205,19 @@ def main():
         global pose_control_flag
         pose_control_flag = True
 
-        # # 高度变换逻辑
-        # alternate_height_change()
+        # 用户选择坐标变换类型
+        coord_choice = input("请选择坐标变换类型 (x/y): ").lower().strip()
+        while coord_choice not in ['x', 'y']:
+            print("无效的输入，请输入 'x' 或 'y'")
+            coord_choice = input("请选择坐标变换类型 (x/y): ").lower().strip()
 
-        #  # X坐标变换逻辑
-        # alternate_x_change()
-        
-         # y坐标变换逻辑
-        alternate_y_change()
+        # 根据用户选择执行相应的坐标变换
+        if coord_choice == 'x':
+            print("开始X坐标变换...")
+            alternate_x_change()
+        else:
+            print("开始Y坐标变换...")
+            alternate_y_change()
 
         # 停止控制
         pose_control_flag = False
