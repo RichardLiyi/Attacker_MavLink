@@ -6,6 +6,11 @@ import rospy
 from geometry_msgs.msg import Twist, Pose
 from std_msgs.msg import String
 import sys
+import logging
+
+# 配置ROS日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('rosout')
 
 # 全局变量
 MAX_LINEAR = 20
@@ -48,7 +53,7 @@ def boundary_check():
 
 def log_velocity():
     """记录当前速度"""
-    rospy.loginfo("当前速度: forward=%.2f, leftward=%.2f, upward=%.2f, angular=%.2f",
+    logger.info("当前速度: forward=%.2f, leftward=%.2f, upward=%.2f, angular=%.2f",
                   forward, leftward, upward, angular)
 
 
@@ -71,7 +76,7 @@ def set_command(command):
     """设置命令"""
     global cmd
     cmd = command
-    rospy.loginfo("设置命令: %s", cmd)
+    logger.info("设置命令: %s", cmd)
 
 
 def set_hover():
@@ -103,7 +108,7 @@ def publish_pose(pose):
     """发布坐标控制命令"""
     global pose_control_flag
     if not pose_control_flag:
-        rospy.loginfo("尚未进入坐标控制模式，请等待")
+        logger.info("尚未进入坐标控制模式，请等待")
         return
 
     pose.position.x = target_x
@@ -128,7 +133,7 @@ def get_initial_height(default_height=3.87):
         msg = rospy.wait_for_message("/iris_0/mavros/local_position/pose", Pose, timeout=5)
         return msg.position.z
     except rospy.ROSException:
-        rospy.logwarn("获取高度失败，使用默认高度: %.2f", default_height)
+        logger.warn("获取高度失败，使用默认高度: %.2f", default_height)
         return default_height
 
 
@@ -138,7 +143,7 @@ def alternate_height_change(step=0.3, duration=30 * 60):
     direction = 1
     for _ in range(duration):
         target_z += step * direction
-        rospy.loginfo("当前高度: %.2f", target_z)
+        logger.info("当前高度: %.2f", target_z)
         publish_pose(Pose())
         direction *= -1
         rospy.sleep(1)
@@ -150,7 +155,7 @@ def alternate_east_change(step=1.5, duration=30 * 60 // 1.5):
     direction = 1
     for _ in range(int(duration)):
         target_x += step * direction
-        rospy.loginfo("当前East坐标(PX4中的Y): %.2f", target_x)
+        logger.info("当前East坐标(PX4中的Y): %.2f", target_x)
         publish_pose(Pose())
         direction *= -1
         rospy.sleep(1.5)
@@ -162,77 +167,87 @@ def alternate_north_change(step=0.5, duration=30 * 60 // 0.5):
     direction = 1
     for _ in range(int(duration)):
         target_y += step * direction
-        rospy.loginfo("当前North坐标(PX4中的X): %.2f", target_y)
+        logger.info("当前North坐标(PX4中的X): %.2f", target_y)
         publish_pose(Pose())
         direction *= -1
         rospy.sleep(0.5)
 
 
 def main():
-    if len(sys.argv) != 5:
-        rospy.logerr("参数不足！用法: gpt_control.py <multirotor_type> <multirotor_num> <control_type> <coord_type>")
-        return
+    try:
+        if len(sys.argv) != 5:
+            logger.error("参数不足！用法: gpt_control.py <multirotor_type> <multirotor_num> <control_type> <coord_type>")
+            return
 
-    multirotor_type = sys.argv[1]
-    multirotor_num = int(sys.argv[2])
-    control_type = sys.argv[3]
-    coord_type = sys.argv[4].lower()
+        multirotor_type = sys.argv[1]
+        multirotor_num = int(sys.argv[2])
+        control_type = sys.argv[3]
+        coord_type = sys.argv[4].lower()
 
-    if coord_type not in ['east', 'north']:
-        rospy.logerr("坐标类型必须是 'east' 或 'north'")
-        return
+        if coord_type not in ['east', 'north', 'x', 'y']:  # 同时支持east/north和x/y
+            logger.error("坐标类型必须是 'east'/'x' 或 'north'/'y'")
+            return
 
-    rospy.init_node(multirotor_type + '_multirotor_control', anonymous=True)
-    init_publishers(multirotor_type, multirotor_num)
+        # 转换坐标类型
+        if coord_type == 'x':
+            coord_type = 'east'
+        elif coord_type == 'y':
+            coord_type = 'north'
 
-    if control_type == 'pose':
-        rospy.sleep(0.2)
-        set_command('OFFBOARD')
-        publish_velocity(Twist())
-        rospy.sleep(0.5)
+        rospy.init_node(multirotor_type + '_multirotor_control', anonymous=True)
+        init_publishers(multirotor_type, multirotor_num)
 
-        update_velocity(up=1.4)
-        publish_velocity(Twist())
-        rospy.sleep(0.5)
+        if control_type == 'pose':
+            rospy.sleep(0.2)
+            set_command('OFFBOARD')
+            publish_velocity(Twist())
+            rospy.sleep(0.5)
 
-        set_command('ARM')
-        publish_velocity(Twist())
-        rospy.sleep(8)
+            update_velocity(up=1.4)
+            publish_velocity(Twist())
+            rospy.sleep(0.5)
 
-        set_hover()
-        publish_velocity(Twist())
-        rospy.sleep(5)
+            set_command('ARM')
+            publish_velocity(Twist())
+            rospy.sleep(8)
 
-        # 获取高度
-        global target_z
-        target_z = get_initial_height()
+            set_hover()
+            publish_velocity(Twist())
+            rospy.sleep(5)
 
-        # 启动坐标控制
-        global pose_control_flag
-        pose_control_flag = True
+            # 获取高度
+            global target_z
+            target_z = get_initial_height()
 
-        # 根据命令行参数执行相应的坐标变换
-        if coord_type == 'east':
-            rospy.loginfo("开始East坐标变换...")
-            alternate_east_change()
-        else:
-            rospy.loginfo("开始North坐标变换...")
-            alternate_north_change()
+            # 启动坐标控制
+            global pose_control_flag
+            pose_control_flag = True
 
-        # 停止控制
-        pose_control_flag = False
-        set_hover()
-        publish_velocity(Twist())
-        rospy.sleep(1)
+            # 根据命令行参数执行相应的坐标变换
+            if coord_type == 'east':
+                logger.info("开始East坐标变换...")
+                alternate_east_change()
+            else:
+                logger.info("开始North坐标变换...")
+                alternate_north_change()
 
-        set_command('AUTO.LAND')
-        publish_velocity(Twist())
-        rospy.sleep(10)
+            # 停止控制
+            pose_control_flag = False
+            set_hover()
+            publish_velocity(Twist())
+            rospy.sleep(1)
 
-        set_command('DISARM')
-        publish_velocity(Twist())
-        rospy.sleep(0.5)
+            set_command('AUTO.LAND')
+            publish_velocity(Twist())
+            rospy.sleep(10)
 
+            set_command('DISARM')
+            publish_velocity(Twist())
+            rospy.sleep(0.5)
+
+    except Exception as e:
+        logger.error("发生错误: %s", str(e))
+        raise
 
 if __name__ == "__main__":
     main()
