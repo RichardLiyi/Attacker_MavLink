@@ -182,7 +182,7 @@ class DroneController(object):
             'p': self._print_status,
             'f': self._handle_fly_to_position,
             'x': lambda: False,
-            'o': self._handle_x_offset_experiment
+            'o': self._handle_x_offset_experiment  # 使用'o'键触发X轴位置偏置实验
         }
 
         if key in control_map:
