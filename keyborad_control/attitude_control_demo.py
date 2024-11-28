@@ -10,6 +10,8 @@ from mavros_msgs.msg import AttitudeTarget, PositionTarget, State
 from mavros_msgs.srv import CommandBool, SetMode
 from geometry_msgs.msg import PoseStamped, Twist, TwistStamped
 from nav_msgs.msg import Odometry
+import threading
+import Queue
 
 class DroneState(object):
     """无人机状态类，用于存储和更新无人机的状态信息"""
@@ -117,6 +119,11 @@ class DroneController(object):
         self._setup_ros_communication(uav_type)
         self.att = AttitudeTarget()
 
+        # 添加坐标输入相关的队列和线程
+        self.coordinate_queue = Queue.Queue()
+        self.coordinate_input_thread = None
+        self.coordinate_input_event = threading.Event()
+        
     def _setup_ros_communication(self, uav_type):
         """设置ROS通信"""
         # 订阅器
@@ -224,6 +231,31 @@ class DroneController(object):
               (self.control['x'], self.control['y'], 
                self.control['z'], self.control['yaw']))
 
+    def _coordinate_input_task(self):
+        """坐标输入任务，运行在单独的线程中"""
+        try:
+            print("\n当前位置 - X: %.2f Y: %.2f Z: %.2f" % 
+                  (self.control['x'], self.control['y'], self.control['z']))
+            print("请输入目标位置（输入非数字返回当前位置）：")
+            
+            x = input("目标X坐标: ")
+            y = input("目标Y坐标: ")
+            z = input("目标Z坐标: ")
+            
+            # 尝试转换为浮点数
+            x = float(x)
+            y = float(y)
+            z = float(z)
+            
+            # 将坐标放入队列
+            self.coordinate_queue.put((x, y, z))
+        except (ValueError, KeyboardInterrupt):
+            print("\n输入取消，保持当前位置")
+            self.coordinate_queue.put(None)
+        finally:
+            # 标记输入完成
+            self.coordinate_input_event.set()
+
     def _handle_fly_to_position(self):
         """处理飞行到指定位置"""
         # 确保当前处于OFFBOARD模式和控制状态
@@ -237,47 +269,36 @@ class DroneController(object):
         current_z = self.control['z']
         current_yaw = self.control['yaw']
         
+        # 重置事件和队列
+        self.coordinate_queue = Queue.Queue()
+        self.coordinate_input_event.clear()
+        
+        # 启动输入线程
+        self.coordinate_input_thread = threading.Thread(target=self._coordinate_input_task)
+        self.coordinate_input_thread.daemon = True
+        self.coordinate_input_thread.start()
+        
+        # 等待输入完成，同时持续发送当前位置
+        while not self.coordinate_input_event.is_set():
+            self._send_position_target()
+            rospy.sleep(0.1)
+        
+        # 检查是否有有效坐标
         try:
-            print("\n当前位置 - X: %.2f Y: %.2f Z: %.2f" % (current_x, current_y, current_z))
-            print("请输入目标位置（输入非数字返回当前位置）：")
+            coordinate = self.coordinate_queue.get(block=False)
             
-            x = input("目标X坐标: ")
-            y = input("目标Y坐标: ")
-            z = input("目标Z坐标: ")
+            if coordinate is None:
+                # 输入被取消，恢复当前位置
+                self.control['x'] = current_x
+                self.control['y'] = current_y
+                self.control['z'] = current_z
+                self.control['yaw'] = current_yaw
+                return
             
-            # 转换输入为浮点数
-            x = float(x)
-            y = float(y)
-            z = float(z)
+            x, y, z = coordinate
             
             # 重新切换到OFFBOARD模式，确保控制权
             self.flight_mode_service(custom_mode='OFFBOARD')
-            
-            # 发布一个明确的位置目标，防止着陆检测
-            target = PositionTarget()
-            target.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
-            target.type_mask = (PositionTarget.IGNORE_VX + 
-                              PositionTarget.IGNORE_VY +
-                              PositionTarget.IGNORE_VZ + 
-                              PositionTarget.IGNORE_AFX +
-                              PositionTarget.IGNORE_AFY + 
-                              PositionTarget.IGNORE_AFZ +
-                              PositionTarget.IGNORE_YAW_RATE)
-
-            # 设置目标位置
-            target.position.x = x
-            target.position.y = y
-            target.position.z = z
-            target.yaw = current_yaw
-
-            # 设置header
-            target.header.stamp = rospy.Time.now()
-            target.header.frame_id = "map"
-
-            # 连续发布几次位置目标
-            for _ in range(10):
-                self.target_motion_pub.publish(target)
-                rospy.sleep(0.1)
             
             # 更新控制目标
             self.control['x'] = x
@@ -286,14 +307,13 @@ class DroneController(object):
             
             print("\n正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
             
-        except (ValueError, KeyboardInterrupt):
-            print("\n输入取消，保持当前位置")
+        except Queue.Empty:
+            print("\n输入处理发生错误")
             # 恢复当前位置
             self.control['x'] = current_x
             self.control['y'] = current_y
             self.control['z'] = current_z
             self.control['yaw'] = current_yaw
-            return
 
     def _print_status(self):
         """打印状态信息"""
