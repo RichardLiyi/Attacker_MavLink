@@ -329,69 +329,34 @@ class DroneController(object):
                 self._send_position_target()
                 rospy.sleep(0.1)
             
-            # 创建一个队列用于存储用户输入的参数
-            param_queue = Queue()
-            
-            # 创建一个线程来处理用户输入
-            def input_thread():
-                params = self._get_experiment_params()
-                param_queue.put(params)
-            
-            thread = threading.Thread(target=input_thread)
-            thread.daemon = True  # 设置为守护线程，这样主程序退出时线程会自动结束
-            thread.start()
-            
-            print("请输入实验参数，同时保持无人机悬停...")
-            
-            # 主线程继续发送悬停位置，直到收到用户输入
-            while thread.is_alive():
-                self.control.update(takeoff_target)
-                self._send_position_target()
-                rospy.sleep(0.1)
-            
-            # 获取用户输入的参数
-            params = param_queue.get()
+            # 获取实验参数
+            params = self._get_experiment_params()
             if params is None:
                 self._safe_land()
                 return
                 
             D, T, experiment_time = params
-            print("\n开始水平位置偏置实验")
+            print("\n开始X轴位置偏置实验")
             
-            # 开始实验循环
-            experiment_start_time = rospy.Time.now().to_sec()
-            cycle_start_time = experiment_start_time
-            is_positive_direction = True
+            # 计算循环次数
+            cycles = int(experiment_time / T)
+            direction = 1  # 1 表示正向，-1 表示反向
             
-            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
-                current_time = rospy.Time.now().to_sec()
-                cycle_elapsed_time = current_time - cycle_start_time
-                
-                # 判断是否需要切换方向
-                if cycle_elapsed_time >= T:
-                    is_positive_direction = not is_positive_direction
-                    cycle_start_time = current_time
-                    cycle_elapsed_time = 0
-                
-                # 计算当前X位置
-                if is_positive_direction:
-                    # 从0线性变化到D
-                    x_pos = (cycle_elapsed_time / T) * D
-                else:
-                    # 从D线性变化回0
-                    x_pos = D * (1 - cycle_elapsed_time / T)
-                
-                # 更新控制目标
-                self.control['x'] = x_pos
-                self.control['y'] = 0
-                self.control['z'] = 5
+            for _ in range(cycles):
+                # 设置目标位置
+                target = {'x': D * direction, 'y': 0, 'z': 5, 'yaw': 0}
+                self.control.update(target)
                 
                 # 发送位置目标并打印当前位置
                 self._send_position_target()
                 current_pos = self.drone_state.position
-                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
-                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
-                rospy.sleep(0.1)
+                print("目标位置 - X: %.2f, 当前位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (D * direction, current_pos['x'], current_pos['y'], 
+                       current_pos['z'], self.drone_state.attitude['yaw']))
+                
+                # 等待完整周期
+                rospy.sleep(T)
+                direction *= -1  # 切换方向
             
             # 实验完成，降落
             self._safe_land()
@@ -431,38 +396,25 @@ class DroneController(object):
             D, T, experiment_time = params
             print("\n开始Y轴位置偏置实验")
             
-            # 开始实验循环
-            experiment_start_time = rospy.Time.now().to_sec()
-            cycle_start_time = experiment_start_time
-            is_positive_direction = True
+            # 计算循环次数
+            cycles = int(experiment_time / T)
+            direction = 1  # 1 表示正向，-1 表示反向
             
-            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
-                current_time = rospy.Time.now().to_sec()
-                cycle_elapsed_time = current_time - cycle_start_time
-                
-                # 判断是否需要切换方向
-                if cycle_elapsed_time >= T:
-                    is_positive_direction = not is_positive_direction
-                    cycle_start_time = current_time
-                    cycle_elapsed_time = 0
-                
-                # 计算当前Y位置
-                if is_positive_direction:
-                    y_pos = (cycle_elapsed_time / T) * D
-                else:
-                    y_pos = D * (1 - cycle_elapsed_time / T)
-                
-                # 更新控制目标
-                self.control['x'] = 0
-                self.control['y'] = y_pos
-                self.control['z'] = 5
+            for _ in range(cycles):
+                # 设置目标位置
+                target = {'x': 0, 'y': D * direction, 'z': 5, 'yaw': 0}
+                self.control.update(target)
                 
                 # 发送位置目标并打印当前位置
                 self._send_position_target()
                 current_pos = self.drone_state.position
-                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
-                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
-                rospy.sleep(0.1)
+                print("目标位置 - Y: %.2f, 当前位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (D * direction, current_pos['x'], current_pos['y'], 
+                       current_pos['z'], self.drone_state.attitude['yaw']))
+                
+                # 等待完整周期
+                rospy.sleep(T)
+                direction *= -1  # 切换方向
             
             # 实验完成，降落
             self._safe_land()
@@ -502,39 +454,27 @@ class DroneController(object):
             D, T, experiment_time = params
             print("\n开始Z轴位置偏置实验")
             
-            # 开始实验循环
-            experiment_start_time = rospy.Time.now().to_sec()
-            cycle_start_time = experiment_start_time
-            is_positive_direction = True
+            # 计算循环次数
+            cycles = int(experiment_time / T)
+            direction = 1  # 1 表示正向，-1 表示反向
             base_height = 5  # 基础高度
             
-            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
-                current_time = rospy.Time.now().to_sec()
-                cycle_elapsed_time = current_time - cycle_start_time
-                
-                # 判断是否需要切换方向
-                if cycle_elapsed_time >= T:
-                    is_positive_direction = not is_positive_direction
-                    cycle_start_time = current_time
-                    cycle_elapsed_time = 0
-                
-                # 计算当前Z位置
-                if is_positive_direction:
-                    z_pos = base_height + (cycle_elapsed_time / T) * D
-                else:
-                    z_pos = base_height + D * (1 - cycle_elapsed_time / T)
-                
-                # 更新控制目标
-                self.control['x'] = 0
-                self.control['y'] = 0
-                self.control['z'] = z_pos
+            for _ in range(cycles):
+                # 设置目标位置
+                target_z = base_height + D * direction
+                target = {'x': 0, 'y': 0, 'z': target_z, 'yaw': 0}
+                self.control.update(target)
                 
                 # 发送位置目标并打印当前位置
                 self._send_position_target()
                 current_pos = self.drone_state.position
-                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
-                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
-                rospy.sleep(0.1)
+                print("目标高度 - Z: %.2f, 当前位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (target_z, current_pos['x'], current_pos['y'], 
+                       current_pos['z'], self.drone_state.attitude['yaw']))
+                
+                # 等待完整周期
+                rospy.sleep(T)
+                direction *= -1  # 切换方向
             
             # 实验完成，降落
             self._safe_land()
@@ -574,39 +514,25 @@ class DroneController(object):
             D, T, experiment_time = params
             print("\n开始偏航角偏置实验")
             
-            # 开始实验循环
-            experiment_start_time = rospy.Time.now().to_sec()
-            cycle_start_time = experiment_start_time
-            is_positive_direction = True
+            # 计算循环次数
+            cycles = int(experiment_time / T)
+            direction = 1  # 1 表示正向，-1 表示反向
             
-            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
-                current_time = rospy.Time.now().to_sec()
-                cycle_elapsed_time = current_time - cycle_start_time
-                
-                # 判断是否需要切换方向
-                if cycle_elapsed_time >= T:
-                    is_positive_direction = not is_positive_direction
-                    cycle_start_time = current_time
-                    cycle_elapsed_time = 0
-                
-                # 计算当前偏航角
-                if is_positive_direction:
-                    yaw = (cycle_elapsed_time / T) * D
-                else:
-                    yaw = D * (1 - cycle_elapsed_time / T)
-                
-                # 更新控制目标
-                self.control['x'] = 0
-                self.control['y'] = 0
-                self.control['z'] = 5
-                self.control['yaw'] = yaw
+            for _ in range(cycles):
+                # 设置目标偏航角
+                target = {'x': 0, 'y': 0, 'z': 5, 'yaw': D * direction}
+                self.control.update(target)
                 
                 # 发送位置目标并打印当前位置
                 self._send_position_target()
                 current_pos = self.drone_state.position
-                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
-                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
-                rospy.sleep(0.1)
+                print("目标偏航角 - Yaw: %.2f, 当前位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (D * direction, current_pos['x'], current_pos['y'], 
+                       current_pos['z'], self.drone_state.attitude['yaw']))
+                
+                # 等待完整周期
+                rospy.sleep(T)
+                direction *= -1  # 切换方向
             
             # 实验完成，降落
             self._safe_land()
