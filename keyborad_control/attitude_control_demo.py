@@ -50,17 +50,39 @@ class KeyboardController(object):
     """键盘控制类，处理键盘输入和控制逻辑"""
     def __init__(self):
         self.help_message = '''
-        W/S: forward/backward
-        A/D: left/right
-        Q/E: up/down
-        Z/C: rotate left/right
-        T: unlock
-        Y: lock
-        R: return  
-        L: land
-        B: begin attitude control
-        P: print control msg
-        X: quit
+        ====== 无人机键盘控制系统 ======
+        
+        基本控制按键：
+        ---------------
+        移动控制：
+          W/S: 前进/后退
+          A/D: 左右移动
+          Q/E: 上升/下降
+          Z/C: 左右旋转
+        
+        功能按键：
+        ---------------
+        T: 解锁并起飞（起飞高度2米）
+        Y: 上锁
+        B: 开始姿态控制（起飞后必须按此键才能移动）
+        R: 返航
+        L: 降落
+        P: 显示控制信息
+        X: 退出程序
+        
+        使用步骤：
+        ---------------
+        1. 按T键解锁并起飞
+        2. 等待上升到2米高度
+        3. 按B键开始姿态控制
+        4. 使用WSADQEZC进行移动控制
+        5. 需要降落时按L键
+        
+        注意事项：
+        ---------------
+        - 第一次起飞前请确保周围空间充足
+        - 请先等待无人机稳定后再进行移动控制
+        - 遇到紧急情况可按Y键紧急上锁
         '''
         self.control_increments = {
             'position': 0.2,
@@ -145,7 +167,7 @@ class DroneController(object):
             'w': lambda: self._adjust_control('x', 0.2),
             's': lambda: self._adjust_control('x', -0.2),
             'a': lambda: self._adjust_control('y', -0.2),
-            'd': lambda: self._adjust_control('y', 0.2),
+            'd': lambda: self._adjust_control('y', 0.2),    
             'q': lambda: self._adjust_control('z', 0.2),
             'e': lambda: self._adjust_control('z', -0.2),
             'z': lambda: self._adjust_control('yaw', 0.05),
@@ -322,7 +344,28 @@ class DroneController(object):
     def start(self):
         """启动控制循环"""
         rospy.init_node("attitude_control_node")
-        print('启动！')
+        print('''
+============================================
+          无人机键盘控制系统启动
+============================================
+作者: XXX
+版本: 1.0
+适用于: Python 2.7 + ROS + MAVROS
+
+【重要提示】
+1. 确保ROS环境已经正确加载
+2. 确保MAVROS已正常运行
+3. 确保与无人机的连接正常
+
+【使用方法】
+1. 按T键解锁并起飞
+2. 等待上升到预定高度（2米）
+3. 按B键开始姿态控制
+4. 使用键盘控制无人机移动
+
+按P键可随时查看详细控制说明
+============================================
+        ''')
         self._print_status()
 
         rate = rospy.Rate(20)  # 设置20Hz的控制频率
