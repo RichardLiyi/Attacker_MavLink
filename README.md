@@ -1,68 +1,15 @@
-# MAVLink Attack Framework / MAVLink 攻击框架
-
-[English](#english) | [中文](#chinese)
-
-`<a name="english"></a>`
-
-## English
-
-This is an attack framework based on MAVProxy and pymavlink, designed to simulate and test various security threats against MAVLink-based drone systems.
-
-### Project Overview
-
-This project implements several attack modules to demonstrate potential security vulnerabilities in drone communication systems. The framework is built as a MAVProxy module, allowing for real-time interaction with drone systems.
-
-### Key Features
-
-- Hardware backdoor simulation
-- Message modification attacks
-- GPS spoofing
-- Sensor injection and modification
-- GCS (Ground Control Station) spoofing
-- Velocity manipulation
-
-### Attack Modules
-
-The framework includes the following attack capabilities:
-
-1. **Hardware Backdoor**: Manipulates actuator controls
-2. **Message Modification**: Alters MAVLink messages in transit
-3. **GPS Spoofing**: Modifies GPS coordinates
-4. **Sensor Attacks**:
-   - Sensor injection
-   - Sensor modification
-5. **GCS Spoofing**: Manipulates position data sent to ground control
-6. **Reverse Velocity**: Affects vehicle movement parameters
-
-### Usage
-
-The attack module can be loaded in MAVProxy with different configurations:
-
-- For QGC: `--master 127.0.0.1:14550 --out 127.0.0.1:14551 --cmd="module load attack"`
-- For Gazebo: `--master=tcpin:127.0.0.1:4561 --out=tcp:127.0.0.1:4560 --cmd="module load attack"`
-- For MAVROS: `--master 127.0.0.1:24540 --out 127.0.0.1:24541 --cmd="module load attack"`
-
-#### Basic Commands
-
-- Enable hardware backdoor: `attack hardware_backdoor on/off`
-- Enable GPS spoofing: `attack gps on/off`
-- Enable message modification: `attack message_modification`
-- Enable reverse velocity: `attack reverse_velocity`
-
----
-
-`<a name="chinese"></a>`
-
-## 中文
+# 一种基于MAVLink的虚假数据攻击器的实现
 
 这是一个基于 MAVProxy 和 pymavlink 的攻击框架，用于模拟和测试针对基于 MAVLink 的无人机系统的各种安全威胁。
 
 ### 项目概述
 基本无人机平台由地面控制站QGC、无人机飞行控制器PX4和物理环境仿真器Gazebo组成，其中PX4与QGC、Gazebo之间使用协议栈内的协议进行通信，在没有网络攻击的情况下，能够实现正常的无人机飞行模拟。基于中间人代理模式的虚假数据注入攻击器，以MAVProxy为设计原型，利用其模块化的结构原理面向MAVLink协议设计攻击插件库。当用户下达加载插件的指令，相关的攻击插件配置到攻击器。
+
 ![alt text](./images/image.png)
+
 ### 攻击模块
 
-框架包含以下攻击功能:
+框架包含以下攻击功能：
 
 ![alt text](./images/image-1.png)
 
