@@ -299,31 +299,19 @@ class DroneController(object):
     def _handle_x_offset_experiment(self):
         """处理X轴位置偏置实验"""
         try:
-            print("\n===== X轴位置偏置实验 =====")
-            print("1. 解锁并切换到OFFBOARD模式")
-            
-            # 解锁并切换模式
+            # 解锁并切换到OFFBOARD模式
             self.arm()
             self.flight_mode_service(custom_mode='OFFBOARD')
             self.mission_state = 'control'
-            rospy.sleep(1)  # 等待模式切换稳定
             
-            print("2. 起飞到默认位置(0, 0, 5)")
-            # 设置起飞目标
-            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            # 设置起飞目标位置
+            self.control.update({'x': 0, 'y': 0, 'z': 5, 'yaw': 0})
+            print('开始X轴位置偏置实验')
+            print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
+                  (self.control['x'], self.control['y'], self.control['z']))
             
-            # 起飞并等待稳定
-            start_time = rospy.Time.now().to_sec()
-            print("正在起飞...")
-            while rospy.Time.now().to_sec() - start_time < 10:  # 增加等待时间确保稳定
-                self.control['x'] = takeoff_target['x']
-                self.control['y'] = takeoff_target['y']
-                self.control['z'] = takeoff_target['z']
-                self._send_position_target()
-                rospy.sleep(0.1)
-            
-            print("3. 到达默认位置，等待输入实验参数")
-            print("请依次输入以下参数：")
+            # 等待起飞到位
+            rospy.sleep(5)
             
             # 输入实验参数
             D = float(raw_input("偏置幅度D (米): "))
@@ -336,7 +324,6 @@ class DroneController(object):
                 self._safe_land()
                 return
             
-            print("4. 开始X轴位置偏置实验")
             # 开始实验循环
             experiment_start_time = rospy.Time.now().to_sec()
             cycle_start_time = experiment_start_time
@@ -370,14 +357,14 @@ class DroneController(object):
                 self._send_position_target()
                 rospy.sleep(0.1)
             
-            print("5. 实验完成，准备降落")
+            # 实验完成，降落
             self._safe_land()
-            print("\n===== X轴位置偏置实验完成 =====")
+            print("\n实验完成")
         
         except (ValueError, KeyboardInterrupt):
             print("\n实验被中断")
             self._safe_land()
-    
+
     def _safe_land(self):
         """安全降落程序"""
         print("执行安全降落...")
