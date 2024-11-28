@@ -172,6 +172,7 @@ class DroneController(object):
     def _handle_takeoff(self):
         """处理起飞"""
         self.arm()
+        self.flight_mode_service(custom_mode='OFFBOARD')  # 切换到OFFBOARD模式
         self.mission_state = 'takeoff'
         print('开始起飞')
         self._print_status()
