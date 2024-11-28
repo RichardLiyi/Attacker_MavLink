@@ -85,8 +85,8 @@ class DroneController(object):
         self.mission_state = None
         
         # 控制参数
-        self.control = {'x': 1, 'y': 0, 'z': 2, 'yaw': 0}
-        self.takeoff = {'x': 0, 'y': 0, 'z': 2, 'yaw': 0}
+        self.control = {'x': 0, 'y': 0, 'z': 2, 'yaw': 0}  # 修改初始控制位置
+        self.takeoff = {'x': 0, 'y': 0, 'z': 2, 'yaw': 0}  # 设置起飞高度为2米
         self.angle_max = 0.3
 
         # ROS通信设置
@@ -211,14 +211,25 @@ class DroneController(object):
     def _send_position_target(self):
         """发送位置控制指令"""
         target = PositionTarget()
+        target.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
+        target.type_mask = (PositionTarget.IGNORE_VX + 
+                          PositionTarget.IGNORE_VY +
+                          PositionTarget.IGNORE_VZ + 
+                          PositionTarget.IGNORE_AFX +
+                          PositionTarget.IGNORE_AFY + 
+                          PositionTarget.IGNORE_AFZ +
+                          PositionTarget.IGNORE_YAW_RATE)
+
+        # 设置目标位置
         target.position.x = self.takeoff['x']
         target.position.y = self.takeoff['y']
         target.position.z = self.takeoff['z']
         target.yaw = self.takeoff['yaw']
-        target.type_mask = (PositionTarget.IGNORE_VX + PositionTarget.IGNORE_VY +
-                           PositionTarget.IGNORE_VZ + PositionTarget.IGNORE_AFX +
-                           PositionTarget.IGNORE_AFY + PositionTarget.IGNORE_AFZ +
-                           PositionTarget.FORCE + PositionTarget.IGNORE_YAW_RATE)
+
+        # 设置header
+        target.header.stamp = rospy.Time.now()
+        target.header.frame_id = "map"
+
         self.target_motion_pub.publish(target)
 
     def _send_attitude_target(self):
@@ -314,11 +325,13 @@ class DroneController(object):
         print('启动！')
         self._print_status()
 
+        rate = rospy.Rate(20)  # 设置20Hz的控制频率
         while not rospy.is_shutdown():
             key = self.keyboard.get_key()
             if not self.process_keyboard_input(key):
                 break
             self.update_control()
+            rate.sleep()  # 控制循环频率
 
 def main():
     """主函数"""
