@@ -304,14 +304,18 @@ class DroneController(object):
             self.flight_mode_service(custom_mode='OFFBOARD')
             self.mission_state = 'control'
             
-            # 设置起飞目标位置
-            self.control.update({'x': 0, 'y': 0, 'z': 5, 'yaw': 0})
+            # 设置起飞目标位置并持续发送控制指令
+            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
             print('开始X轴位置偏置实验')
             print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
-                  (self.control['x'], self.control['y'], self.control['z']))
+                  (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
             
-            # 等待起飞到位
-            rospy.sleep(5)
+            # 持续发送起飞位置10秒
+            start_time = rospy.Time.now().to_sec()
+            while rospy.Time.now().to_sec() - start_time < 5:
+                self.control.update(takeoff_target)
+                self._send_position_target()
+                rospy.sleep(0.1)
             
             # 输入实验参数
             D = float(raw_input("偏置幅度D (米): "))
