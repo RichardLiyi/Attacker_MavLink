@@ -258,6 +258,55 @@ class DroneController(object):
         self.att.type_mask = AttitudeTarget.IGNORE_ATTITUDE
         self.body_target_pub.publish(self.att)
 
+    def _send_angle_control(self):
+        """发送角度控制指令"""
+        # PD控制
+        roll_r = -0.54236707 * (self.drone_state.position['y'] - self.control['y']) - \
+                 0.42717549 * (self.drone_state.velocity['y'] - 0)
+        pitch_r = -0.54236707 * (self.drone_state.position['x'] - self.control['x']) - \
+                  0.42717549 * (self.drone_state.velocity['x'] - 0)
+        yaw_r = self.control['yaw']
+        
+        # 限制角度
+        roll_r = np.clip(roll_r, -self.angle_max, self.angle_max)
+        pitch_r = np.clip(pitch_r, -self.angle_max, self.angle_max)
+
+        # 计算推力
+        thrust = (-0.5 * (self.drone_state.position['z'] - self.control['z']) -
+                 0.31774509 * (self.drone_state.velocity['z'] - 0) +
+                 0.55 / math.cos(self.drone_state.attitude['pitch']) /
+                 math.cos(self.drone_state.attitude['roll']))
+
+        # 将欧拉角转换为四元数
+        q = self._euler_to_quaternion(roll_r, pitch_r, yaw_r)
+        
+        # 发送控制指令
+        self.att.orientation.w = q[0]
+        self.att.orientation.x = q[1]
+        self.att.orientation.y = q[2]
+        self.att.orientation.z = q[3]
+        self.att.thrust = thrust
+        self.att.type_mask = (AttitudeTarget.IGNORE_ROLL_RATE +
+                             AttitudeTarget.IGNORE_PITCH_RATE +
+                             AttitudeTarget.IGNORE_YAW_RATE)
+        self.body_target_pub.publish(self.att)
+
+    def _euler_to_quaternion(self, roll, pitch, yaw):
+        """欧拉角转四元数"""
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
+
+        w = cr * cp * cy + sr * sp * sy
+        x = sr * cp * cy - cr * sp * sy
+        y = cr * sp * cy + sr * cp * sy
+        z = cr * cp * sy - sr * sp * cy
+
+        return np.array([w, x, y, z])
+
     def start(self):
         """启动控制循环"""
         rospy.init_node("attitude_control_node")
