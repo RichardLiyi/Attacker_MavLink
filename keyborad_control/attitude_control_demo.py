@@ -346,6 +346,7 @@ class DroneController(object):
                 return
                 
             D, T, experiment_time = params
+            print("\n开始水平位置偏置实验")
             
             # 开始实验循环
             experiment_start_time = rospy.Time.now().to_sec()
@@ -361,7 +362,6 @@ class DroneController(object):
                     is_positive_direction = not is_positive_direction
                     cycle_start_time = current_time
                     cycle_elapsed_time = 0
-                    print("方向切换: %s" % ("正向" if is_positive_direction else "反向"))
                 
                 # 计算当前X位置
                 if is_positive_direction:
@@ -376,8 +376,11 @@ class DroneController(object):
                 self.control['y'] = 0
                 self.control['z'] = 5
                 
-                # 发送位置目标
+                # 发送位置目标并打印当前位置
                 self._send_position_target()
+                current_pos = self.drone_state.position
+                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
                 rospy.sleep(0.1)
             
             # 实验完成，降落
