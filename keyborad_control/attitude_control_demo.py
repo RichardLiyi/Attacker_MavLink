@@ -10,6 +10,8 @@ from mavros_msgs.msg import AttitudeTarget, PositionTarget, State
 from mavros_msgs.srv import CommandBool, SetMode
 from geometry_msgs.msg import PoseStamped, Twist, TwistStamped
 from nav_msgs.msg import Odometry
+from Queue import Queue
+import threading
 
 class DroneState(object):
     """无人机状态类，用于存储和更新无人机的状态信息"""
@@ -310,23 +312,40 @@ class DroneController(object):
             print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
                   (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
             
-            # 持续发送起飞位置10秒
+            # 持续发送起飞位置5秒
             start_time = rospy.Time.now().to_sec()
             while rospy.Time.now().to_sec() - start_time < 5:
                 self.control.update(takeoff_target)
                 self._send_position_target()
                 rospy.sleep(0.1)
             
-            # 输入实验参数
-            D = float(raw_input("偏置幅度D (米): "))
-            T = float(raw_input("偏置周期T (秒): "))
-            experiment_time = float(raw_input("实验总持续时间 (秒): "))
+            # 创建一个队列用于存储用户输入的参数
+            param_queue = Queue()
             
-            # 验证参数合法性
-            if D <= 0 or T <= 0 or experiment_time <= 0:
-                print("参数必须为正数！")
+            # 创建一个线程来处理用户输入
+            def input_thread():
+                params = self._get_experiment_params()
+                param_queue.put(params)
+            
+            thread = threading.Thread(target=input_thread)
+            thread.daemon = True  # 设置为守护线程，这样主程序退出时线程会自动结束
+            thread.start()
+            
+            print("请输入实验参数，同时保持无人机悬停...")
+            
+            # 主线程继续发送悬停位置，直到收到用户输入
+            while thread.is_alive():
+                self.control.update(takeoff_target)
+                self._send_position_target()
+                rospy.sleep(0.1)
+            
+            # 获取用户输入的参数
+            params = param_queue.get()
+            if params is None:
                 self._safe_land()
                 return
+                
+            D, T, experiment_time = params
             
             # 开始实验循环
             experiment_start_time = rospy.Time.now().to_sec()
@@ -368,6 +387,21 @@ class DroneController(object):
         except (ValueError, KeyboardInterrupt):
             print("\n实验被中断")
             self._safe_land()
+
+    def _get_experiment_params(self):
+        """获取实验参数"""
+        try:
+            D = float(raw_input("偏置幅度D (米): "))
+            T = float(raw_input("偏置周期T (秒): "))
+            experiment_time = float(raw_input("实验总持续时间 (秒): "))
+            
+            if D <= 0 or T <= 0 or experiment_time <= 0:
+                print("参数必须为正数！")
+                return None
+            return D, T, experiment_time
+        except ValueError:
+            print("输入必须为数字！")
+            return None
 
     def _safe_land(self):
         """安全降落程序"""
@@ -558,10 +592,19 @@ class DroneController(object):
         self._print_status()
 
         rate = rospy.Rate(20)  # 设置20Hz的控制频率
+        
+        # 创建一个线程来处理键盘输入
+        def input_thread():
+            while True:
+                key = self.keyboard.get_key()
+                if not self.process_keyboard_input(key):
+                    break
+        
+        thread = threading.Thread(target=input_thread)
+        thread.daemon = True  # 设置为守护线程，这样主程序退出时线程会自动结束
+        thread.start()
+        
         while not rospy.is_shutdown():
-            key = self.keyboard.get_key()
-            if not self.process_keyboard_input(key):
-                break
             self.update_control()
             rate.sleep()  # 控制循环频率
 
