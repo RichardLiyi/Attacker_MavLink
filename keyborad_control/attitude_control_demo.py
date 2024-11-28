@@ -164,40 +164,50 @@ class DroneController(object):
 
     def process_keyboard_input(self, key):
         """处理键盘输入"""
-        if not key:
-            return True
-
-        control_map = {
-            'w': lambda: self._adjust_control('x', 0.2),
-            's': lambda: self._adjust_control('x', -0.2),
-            'a': lambda: self._adjust_control('y', -0.2),
-            'd': lambda: self._adjust_control('y', 0.2),    
-            'q': lambda: self._adjust_control('z', 0.2),
-            'e': lambda: self._adjust_control('z', -0.2),
-            'z': lambda: self._adjust_control('yaw', 0.05),
-            'c': lambda: self._adjust_control('yaw', -0.05),
-            't': self._handle_takeoff,
-            'y': self.disarm,
-            'r': self._handle_return,
-            'l': self._handle_land,
-            'b': self._handle_begin_control,
-            'p': self._print_status,
-            'f': self._handle_fly_to_position,
-            'x': lambda: False,
-            'o': self._handle_x_offset_experiment  # 使用'o'键触发X轴位置偏置实验
-        }
-
-        if key in control_map:
-            result = control_map[key]()
-            return False if key == 'x' else True
+        if key == 'w':
+            self.control['x'] += 0.1
+        elif key == 's':
+            self.control['x'] -= 0.1
+        elif key == 'a':
+            self.control['y'] += 0.1
+        elif key == 'd':
+            self.control['y'] -= 0.1
+        elif key == 'q':
+            self.control['z'] += 0.1
+        elif key == 'e':
+            self.control['z'] -= 0.1
+        elif key == 'z':
+            self.control['yaw'] += 0.1
+        elif key == 'c':
+            self.control['yaw'] -= 0.1
+        elif key == 't':
+            self._handle_takeoff()
+        elif key == 'l':
+            self._handle_land()
+        elif key == 'o':
+            print("\n请选择实验类型：")
+            print("1. 水平X位置偏置实验")
+            print("2. 水平Y位置偏置实验")
+            print("3. 高度Z位置偏置实验")
+            print("4. 偏航角Yaw偏置实验")
+            try:
+                choice = int(raw_input("请输入选项（1-4）: "))
+                if choice == 1:
+                    self._handle_x_offset_experiment()
+                elif choice == 2:
+                    self._handle_y_offset_experiment()
+                elif choice == 3:
+                    self._handle_z_offset_experiment()
+                elif choice == 4:
+                    self._handle_yaw_offset_experiment()
+                else:
+                    print("无效的选项！")
+            except ValueError:
+                print("请输入有效的数字！")
+        elif key == 'x':
+            print("退出程序")
+            return False
         return True
-
-    def _adjust_control(self, axis, value):
-        """调整控制值"""
-        self.control[axis] += value
-        print("控制位置 - X: %.2f Y: %.2f Z: %.2f YAW: %.2f" % 
-              (self.control['x'], self.control['y'], 
-               self.control['z'], self.control['yaw']))
 
     def _handle_takeoff(self):
         """处理起飞"""
@@ -375,6 +385,221 @@ class DroneController(object):
                 self.control['x'] = x_pos
                 self.control['y'] = 0
                 self.control['z'] = 5
+                
+                # 发送位置目标并打印当前位置
+                self._send_position_target()
+                current_pos = self.drone_state.position
+                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
+                rospy.sleep(0.1)
+            
+            # 实验完成，降落
+            self._safe_land()
+            print("\n实验完成")
+        
+        except (ValueError, KeyboardInterrupt):
+            print("\n实验被中断")
+            self._safe_land()
+
+    def _handle_y_offset_experiment(self):
+        """处理Y轴位置偏置实验"""
+        try:
+            # 解锁并切换到OFFBOARD模式
+            self.arm()
+            self.flight_mode_service(custom_mode='OFFBOARD')
+            self.mission_state = 'control'
+            
+            # 设置起飞目标位置并持续发送控制指令
+            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            print('开始Y轴位置偏置实验')
+            print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
+                  (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
+            
+            # 持续发送起飞位置5秒
+            start_time = rospy.Time.now().to_sec()
+            while rospy.Time.now().to_sec() - start_time < 5:
+                self.control.update(takeoff_target)
+                self._send_position_target()
+                rospy.sleep(0.1)
+            
+            # 获取实验参数
+            params = self._get_experiment_params()
+            if params is None:
+                self._safe_land()
+                return
+                
+            D, T, experiment_time = params
+            print("\n开始Y轴位置偏置实验")
+            
+            # 开始实验循环
+            experiment_start_time = rospy.Time.now().to_sec()
+            cycle_start_time = experiment_start_time
+            is_positive_direction = True
+            
+            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
+                current_time = rospy.Time.now().to_sec()
+                cycle_elapsed_time = current_time - cycle_start_time
+                
+                # 判断是否需要切换方向
+                if cycle_elapsed_time >= T:
+                    is_positive_direction = not is_positive_direction
+                    cycle_start_time = current_time
+                    cycle_elapsed_time = 0
+                
+                # 计算当前Y位置
+                if is_positive_direction:
+                    y_pos = (cycle_elapsed_time / T) * D
+                else:
+                    y_pos = D * (1 - cycle_elapsed_time / T)
+                
+                # 更新控制目标
+                self.control['x'] = 0
+                self.control['y'] = y_pos
+                self.control['z'] = 5
+                
+                # 发送位置目标并打印当前位置
+                self._send_position_target()
+                current_pos = self.drone_state.position
+                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
+                rospy.sleep(0.1)
+            
+            # 实验完成，降落
+            self._safe_land()
+            print("\n实验完成")
+        
+        except (ValueError, KeyboardInterrupt):
+            print("\n实验被中断")
+            self._safe_land()
+
+    def _handle_z_offset_experiment(self):
+        """处理Z轴位置偏置实验"""
+        try:
+            # 解锁并切换到OFFBOARD模式
+            self.arm()
+            self.flight_mode_service(custom_mode='OFFBOARD')
+            self.mission_state = 'control'
+            
+            # 设置起飞目标位置并持续发送控制指令
+            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            print('开始Z轴位置偏置实验')
+            print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
+                  (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
+            
+            # 持续发送起飞位置5秒
+            start_time = rospy.Time.now().to_sec()
+            while rospy.Time.now().to_sec() - start_time < 5:
+                self.control.update(takeoff_target)
+                self._send_position_target()
+                rospy.sleep(0.1)
+            
+            # 获取实验参数
+            params = self._get_experiment_params()
+            if params is None:
+                self._safe_land()
+                return
+                
+            D, T, experiment_time = params
+            print("\n开始Z轴位置偏置实验")
+            
+            # 开始实验循环
+            experiment_start_time = rospy.Time.now().to_sec()
+            cycle_start_time = experiment_start_time
+            is_positive_direction = True
+            base_height = 5  # 基础高度
+            
+            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
+                current_time = rospy.Time.now().to_sec()
+                cycle_elapsed_time = current_time - cycle_start_time
+                
+                # 判断是否需要切换方向
+                if cycle_elapsed_time >= T:
+                    is_positive_direction = not is_positive_direction
+                    cycle_start_time = current_time
+                    cycle_elapsed_time = 0
+                
+                # 计算当前Z位置
+                if is_positive_direction:
+                    z_pos = base_height + (cycle_elapsed_time / T) * D
+                else:
+                    z_pos = base_height + D * (1 - cycle_elapsed_time / T)
+                
+                # 更新控制目标
+                self.control['x'] = 0
+                self.control['y'] = 0
+                self.control['z'] = z_pos
+                
+                # 发送位置目标并打印当前位置
+                self._send_position_target()
+                current_pos = self.drone_state.position
+                print("位置 - X: %.2f, Y: %.2f, Z: %.2f, Yaw: %.2f" % 
+                      (current_pos['x'], current_pos['y'], current_pos['z'], self.drone_state.attitude['yaw']))
+                rospy.sleep(0.1)
+            
+            # 实验完成，降落
+            self._safe_land()
+            print("\n实验完成")
+        
+        except (ValueError, KeyboardInterrupt):
+            print("\n实验被中断")
+            self._safe_land()
+
+    def _handle_yaw_offset_experiment(self):
+        """处理偏航角偏置实验"""
+        try:
+            # 解锁并切换到OFFBOARD模式
+            self.arm()
+            self.flight_mode_service(custom_mode='OFFBOARD')
+            self.mission_state = 'control'
+            
+            # 设置起飞目标位置并持续发送控制指令
+            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            print('开始偏航角偏置实验')
+            print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
+                  (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
+            
+            # 持续发送起飞位置5秒
+            start_time = rospy.Time.now().to_sec()
+            while rospy.Time.now().to_sec() - start_time < 5:
+                self.control.update(takeoff_target)
+                self._send_position_target()
+                rospy.sleep(0.1)
+            
+            # 获取实验参数
+            params = self._get_experiment_params()
+            if params is None:
+                self._safe_land()
+                return
+                
+            D, T, experiment_time = params
+            print("\n开始偏航角偏置实验")
+            
+            # 开始实验循环
+            experiment_start_time = rospy.Time.now().to_sec()
+            cycle_start_time = experiment_start_time
+            is_positive_direction = True
+            
+            while rospy.Time.now().to_sec() - experiment_start_time < experiment_time:
+                current_time = rospy.Time.now().to_sec()
+                cycle_elapsed_time = current_time - cycle_start_time
+                
+                # 判断是否需要切换方向
+                if cycle_elapsed_time >= T:
+                    is_positive_direction = not is_positive_direction
+                    cycle_start_time = current_time
+                    cycle_elapsed_time = 0
+                
+                # 计算当前偏航角
+                if is_positive_direction:
+                    yaw = (cycle_elapsed_time / T) * D
+                else:
+                    yaw = D * (1 - cycle_elapsed_time / T)
+                
+                # 更新控制目标
+                self.control['x'] = 0
+                self.control['y'] = 0
+                self.control['z'] = 5
+                self.control['yaw'] = yaw
                 
                 # 发送位置目标并打印当前位置
                 self._send_position_target()
