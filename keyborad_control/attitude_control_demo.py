@@ -29,6 +29,7 @@ class pub:
         W/S: forward/backward
         A/D: left/right
         Q/E: up/down
+        Z/C: rotate left/right
         T: unlock
         Y: lock
         R: return  
@@ -150,6 +151,14 @@ class pub:
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
             elif key == 'e':
                 control_z = control_z - 0.2
+                print(self.msg2leader)
+                print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
+            elif key == 'z':
+                yaw_r = yaw_r + 0.05
+                print(self.msg2leader)
+                print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
+            elif key == 'c':
+                yaw_r = yaw_r - 0.05
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
             elif key == 't':
