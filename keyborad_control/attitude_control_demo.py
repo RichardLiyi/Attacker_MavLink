@@ -326,9 +326,9 @@ class DroneController(object):
             print("请依次输入以下参数：")
             
             # 输入实验参数
-            D = float(input("偏置幅度D (米): "))
-            T = float(input("偏置周期T (秒): "))
-            experiment_time = float(input("实验总持续时间 (秒): "))
+            D = float(raw_input("偏置幅度D (米): "))
+            T = float(raw_input("偏置周期T (秒): "))
+            experiment_time = float(raw_input("实验总持续时间 (秒): "))
             
             # 验证参数合法性
             if D <= 0 or T <= 0 or experiment_time <= 0:
@@ -351,7 +351,7 @@ class DroneController(object):
                     is_positive_direction = not is_positive_direction
                     cycle_start_time = current_time
                     cycle_elapsed_time = 0
-                    print(f"方向切换: {'正向' if is_positive_direction else '反向'}")
+                    print("方向切换: %s" % ("正向" if is_positive_direction else "反向"))
                 
                 # 计算当前X位置
                 if is_positive_direction:
