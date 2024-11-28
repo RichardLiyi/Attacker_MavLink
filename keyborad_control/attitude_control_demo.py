@@ -226,20 +226,43 @@ class DroneController(object):
 
     def _handle_fly_to_position(self):
         """处理飞行到指定位置"""
+        # 保存当前位置
+        current_x = self.control['x']
+        current_y = self.control['y']
+        current_z = self.control['z']
+        current_yaw = self.control['yaw']
+        
         try:
-            x = float(input("请输入目标X坐标: "))
-            y = float(input("请输入目标Y坐标: "))
-            z = float(input("请输入目标Z坐标: "))
+            print("\n当前位置 - X: %.2f Y: %.2f Z: %.2f" % (current_x, current_y, current_z))
+            print("请输入目标位置（输入非数字返回当前位置）：")
             
+            # 在等待输入时继续发送当前位置的控制指令
+            self._send_position_target()
+            x = input("目标X坐标: ")
+            self._send_position_target()
+            y = input("目标Y坐标: ")
+            self._send_position_target()
+            z = input("目标Z坐标: ")
+            
+            # 转换输入为浮点数
+            x = float(x)
+            y = float(y)
+            z = float(z)
+            
+            # 更新控制目标
             self.control['x'] = x
             self.control['y'] = y
             self.control['z'] = z
             
-            print("正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
-            self.mission_state = 'control'
+            print("\n正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
             
-        except ValueError:
-            print("输入错误！请输入有效的数字")
+        except (ValueError, KeyboardInterrupt):
+            print("\n输入取消，保持当前位置")
+            # 恢复当前位置
+            self.control['x'] = current_x
+            self.control['y'] = current_y
+            self.control['z'] = current_z
+            self.control['yaw'] = current_yaw
             return
 
     def _print_status(self):
