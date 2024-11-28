@@ -253,6 +253,32 @@ class DroneController(object):
             # 重新切换到OFFBOARD模式，确保控制权
             self.flight_mode_service(custom_mode='OFFBOARD')
             
+            # 发布一个明确的位置目标，防止着陆检测
+            target = PositionTarget()
+            target.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
+            target.type_mask = (PositionTarget.IGNORE_VX + 
+                              PositionTarget.IGNORE_VY +
+                              PositionTarget.IGNORE_VZ + 
+                              PositionTarget.IGNORE_AFX +
+                              PositionTarget.IGNORE_AFY + 
+                              PositionTarget.IGNORE_AFZ +
+                              PositionTarget.IGNORE_YAW_RATE)
+
+            # 设置目标位置
+            target.position.x = x
+            target.position.y = y
+            target.position.z = z
+            target.yaw = current_yaw
+
+            # 设置header
+            target.header.stamp = rospy.Time.now()
+            target.header.frame_id = "map"
+
+            # 连续发布几次位置目标
+            for _ in range(10):
+                self.target_motion_pub.publish(target)
+                rospy.sleep(0.1)
+            
             # 更新控制目标
             self.control['x'] = x
             self.control['y'] = y
@@ -278,8 +304,35 @@ class DroneController(object):
         if self.mission_state in ['takeoff', 'return', 'control']:
             # 在起飞、返航和控制状态下，发送位置目标
             self._send_position_target()
+            
+            # 防止意外着陆
             if self.mission_state == 'control':
+                # 发送姿态目标
                 self._send_attitude_target()
+                
+                # 额外发布一个位置目标，确保不会被误判为着陆
+                extra_target = PositionTarget()
+                extra_target.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
+                extra_target.type_mask = (PositionTarget.IGNORE_VX + 
+                                          PositionTarget.IGNORE_VY +
+                                          PositionTarget.IGNORE_VZ + 
+                                          PositionTarget.IGNORE_AFX +
+                                          PositionTarget.IGNORE_AFY + 
+                                          PositionTarget.IGNORE_AFZ +
+                                          PositionTarget.IGNORE_YAW_RATE)
+
+                # 设置目标位置为当前控制位置
+                extra_target.position.x = self.control['x']
+                extra_target.position.y = self.control['y']
+                extra_target.position.z = self.control['z']
+                extra_target.yaw = self.control['yaw']
+
+                # 设置header
+                extra_target.header.stamp = rospy.Time.now()
+                extra_target.header.frame_id = "map"
+
+                self.target_motion_pub.publish(extra_target)
+        
         elif self.mission_state == 'land':
             # 降落时切换到AUTO.LAND模式
             self.flight_mode_service(custom_mode='AUTO.LAND')
