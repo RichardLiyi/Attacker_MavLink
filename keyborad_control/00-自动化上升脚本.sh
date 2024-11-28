@@ -28,13 +28,9 @@ conda activate mavproxy; \
 python mavproxy.py --master=tcpin:127.0.0.1:4561 --out=tcp:127.0.0.1:4560 --cmd='module load attack'"
 sleep 5
 
-# 第三步：启动通信中继节点
-echo "正在启动通信中继节点..."
-run_in_new_tab "通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/multirotor_communication.py iris 0"
+# 第三步：启动无人机控制及通信中继节点
+echo "正在启动无人机控制及通信中继节点..."
+run_in_new_tab "无人机控制及通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/attitude_control_demo.py iris 0"
 sleep 3
-
-# 第四步：运行无人机飞行控制脚本
-echo "正在运行无人机飞行控制脚本..."
-run_in_new_tab "无人机飞行控制" "/usr/bin/python ${SCRIPT_DIR}/multirotor_keyboard_control.py iris 1 vel"
 
 echo "脚本完成，所有步骤已启动。"

@@ -24,7 +24,7 @@ close_terminal_tab() {
 
     # 关闭终端标签页
     echo "尝试关闭 $process_name 的终端标签页..."
-    xdotool search --onlyvisible --name "$process_name" windowactivate key Ctrl+Shift+W
+    pkill -f "$process_name"
 }
 
 # 关闭 PX4 仿真环境
@@ -52,3 +52,24 @@ kill_process "gzclient"
 close_terminal_tab "Gazebo" ""
 
 echo "所有相关进程和终端标签页已关闭。"
+
+# 关闭 attitude_control_demo.py
+echo "关闭姿态控制节点..."
+pkill -f "attitude_control_demo.py"
+
+# 关闭 mavproxy
+echo "关闭 MAVProxy..."
+pkill -f "mavproxy.py"
+
+# 关闭 gazebo
+echo "关闭 Gazebo..."
+pkill -f gazebo
+pkill -f gzserver
+pkill -f gzclient
+
+# 关闭所有ros节点
+echo "关闭所有ROS节点..."
+pkill -f rosmaster
+pkill -f roscore
+
+echo "所有进程已关闭。"

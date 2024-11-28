@@ -26,16 +26,18 @@ class pub:
         self.control_type = control_type
  
         self.msg2leader =  '''
-        4/1: increase/decrease px_r
-        5/2:increase/decrease py_r
-        6/3:increase/decrease pz_r
-        7/8:increase/decrease yaw_r
-        a:arm
-        d:disarm
-        r:return  
-        l:land
-        b:begin attitude_contorl
-        p:print key_contorl msg
+        ↑: forward
+        ↓: backward
+        ←: move left
+        →: move right
+        ,: descend
+        .: ascend
+        a: arm
+        d: disarm
+        r: return  
+        l: land
+        b: begin attitude_contorl
+        p: print key_contorl msg
         q: quit
          '''
         # subscribers
@@ -128,37 +130,28 @@ class pub:
             self.time_now=time.time()
             self.clock=self.time_now-self.time_start
             key = self.getKey() 
-            if  key == '4' :
-                control_x =control_x +0.2
+            if  key == '\x1b[A':  # Up arrow
+                control_x = control_x + 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '1' :
-                control_x =control_x -0.2
-                print(self.msg2leader)
-                print('control_x=',control_x)
-                print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '5' :
-                control_y =control_y +0.2
+            elif key == '\x1b[B':  # Down arrow
+                control_x = control_x - 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '2' :
-                control_y =control_y -0.2
+            elif key == '\x1b[D':  # Left arrow
+                control_y = control_y + 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '6' :
-                control_z =control_z +0.2
+            elif key == '\x1b[C':  # Right arrow
+                control_y = control_y - 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '3' :
-                control_z =control_z -0.2
+            elif key == ',':  # Descend
+                control_z = control_z - 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '7' :
-                yaw_r =yaw_r +0.05
-                print(self.msg2leader)
-                print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
-            elif key == '8' :
-                yaw_r =yaw_r -0.05
+            elif key == '.':  # Ascend
+                control_z = control_z + 0.2
                 print(self.msg2leader)
                 print("control_x:%.2f   control_y: %.2f    control_z: %.2f yaw_r: %.2f " % (control_x,control_y,control_z,yaw_r))
             elif key == 'a' :                
@@ -250,11 +243,10 @@ class pub:
                     self.att.orientation.x=q[1]
                     self.att.orientation.y=q[2]
                     self.att.orientation.z=q[3]
-                    self.att.thrust=thrusta
+                    self.att.thrust=thrust
                     self.att.type_mask = AttitudeTarget.IGNORE_ROLL_RATE + AttitudeTarget.IGNORE_PITCH_RATE+AttitudeTarget.IGNORE_YAW_RATE
                     self.body_target_pub.publish(self.att)
 
 if __name__ == '__main__':
     con = pub(sys.argv[1], sys.argv[2])
     con.start()
-
