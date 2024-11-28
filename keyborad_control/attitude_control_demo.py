@@ -1,4 +1,5 @@
-#-*- coding: UTF-8 -*-
+#-*- coding: UTF-8<|start_header|><|start_header|>assistant<|end_header|>
+
 import rospy
 import tty, termios
 import sys, select
@@ -54,16 +55,17 @@ class KeyboardController(object):
         self.help_message = '''
         ====== 无人机键盘控制系统 ======
         
-        基本控制按键：
+        基本控制按键:
         ---------------
-        移动控制：
+        移动控制:
           W/S: 前进/后退
           A/D: 左右移动
           Q/E: 上升/下降
           Z/C: 左右旋转
           F: 飞行到指定位置
+          O: 执行偏置实验
         
-        功能按键：
+        功能按键:
         ---------------
         T: 解锁并起飞（起飞高度2米）
         Y: 上锁
@@ -73,7 +75,7 @@ class KeyboardController(object):
         P: 显示控制信息
         X: 退出程序
         
-        使用步骤：
+        使用步骤:
         ---------------
         1. 按T键解锁并起飞
         2. 等待上升到2米高度
@@ -82,7 +84,7 @@ class KeyboardController(object):
            或按F键输入目标位置
         5. 需要降落时按L键
         
-        注意事项：
+        注意事项:
         ---------------
         - 第一次起飞前请确保周围空间充足
         - 请先等待无人机稳定后再进行移动控制
