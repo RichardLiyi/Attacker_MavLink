@@ -299,17 +299,30 @@ class DroneController(object):
     def _handle_x_offset_experiment(self):
         """处理X轴位置偏置实验"""
         try:
-            # 如果不在控制模式，自动切换到控制模式
-            if self.mission_state != 'control':
-                print("\n自动切换到姿态控制模式")
-                self.arm()
-                self.flight_mode_service(custom_mode='OFFBOARD')
-                self.mission_state = 'control'
-                
-                # 等待模式切换稳定
-                rospy.sleep(1)
-
             print("\n===== X轴位置偏置实验 =====")
+            print("1. 解锁并切换到OFFBOARD模式")
+            
+            # 解锁并切换模式
+            self.arm()
+            self.flight_mode_service(custom_mode='OFFBOARD')
+            self.mission_state = 'control'
+            rospy.sleep(1)  # 等待模式切换稳定
+            
+            print("2. 起飞到默认位置(0, 0, 5)")
+            # 设置起飞目标
+            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            
+            # 起飞并等待稳定
+            start_time = rospy.Time.now().to_sec()
+            print("正在起飞...")
+            while rospy.Time.now().to_sec() - start_time < 10:  # 增加等待时间确保稳定
+                self.control['x'] = takeoff_target['x']
+                self.control['y'] = takeoff_target['y']
+                self.control['z'] = takeoff_target['z']
+                self._send_position_target()
+                rospy.sleep(0.1)
+            
+            print("3. 到达默认位置，等待输入实验参数")
             print("请依次输入以下参数：")
             
             # 输入实验参数
@@ -320,20 +333,10 @@ class DroneController(object):
             # 验证参数合法性
             if D <= 0 or T <= 0 or experiment_time <= 0:
                 print("参数必须为正数！")
+                self._safe_land()
                 return
             
-            # 设置起飞目标
-            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
-            
-            # 起飞并等待稳定
-            start_time = rospy.Time.now().to_sec()
-            while rospy.Time.now().to_sec() - start_time < 5:
-                self.control['x'] = takeoff_target['x']
-                self.control['y'] = takeoff_target['y']
-                self.control['z'] = takeoff_target['z']
-                self._send_position_target()
-                rospy.sleep(0.1)
-            
+            print("4. 开始X轴位置偏置实验")
             # 开始实验循环
             experiment_start_time = rospy.Time.now().to_sec()
             cycle_start_time = experiment_start_time
@@ -348,6 +351,7 @@ class DroneController(object):
                     is_positive_direction = not is_positive_direction
                     cycle_start_time = current_time
                     cycle_elapsed_time = 0
+                    print(f"方向切换: {'正向' if is_positive_direction else '反向'}")
                 
                 # 计算当前X位置
                 if is_positive_direction:
@@ -366,23 +370,21 @@ class DroneController(object):
                 self._send_position_target()
                 rospy.sleep(0.1)
             
-            # 实验结束，降落并上锁
-            self.flight_mode_service(custom_mode='AUTO.LAND')
-            
-            # 等待降落完成
-            rospy.sleep(5)
-            
-            # 上锁
-            self.disarm()
-            
+            print("5. 实验完成，准备降落")
+            self._safe_land()
             print("\n===== X轴位置偏置实验完成 =====")
         
         except (ValueError, KeyboardInterrupt):
             print("\n实验被中断")
-            # 确保无人机安全
-            self.flight_mode_service(custom_mode='AUTO.LAND')
-            rospy.sleep(5)
-            self.disarm()
+            self._safe_land()
+    
+    def _safe_land(self):
+        """安全降落程序"""
+        print("执行安全降落...")
+        self.flight_mode_service(custom_mode='AUTO.LAND')
+        rospy.sleep(5)  # 等待降落完成
+        self.disarm()
+        print("降落完成，已上锁")
 
     def _print_status(self):
         """打印状态信息"""
