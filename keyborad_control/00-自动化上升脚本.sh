@@ -30,7 +30,7 @@ sleep 5
 
 # 第三步：启动无人机控制及通信中继节点
 echo "正在启动无人机控制及通信中继节点..."
-run_in_new_tab "无人机控制及通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/attitude_control_demo.py iris 0"
+run_in_new_tab "无人机控制及通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/attitude_control_demo.py iris angle"
 sleep 3
 
 echo "脚本完成，所有步骤已启动。"
