@@ -59,6 +59,7 @@ class KeyboardController(object):
           A/D: 左右移动
           Q/E: 上升/下降
           Z/C: 左右旋转
+          F: 飞行到指定位置
         
         功能按键：
         ---------------
@@ -76,6 +77,7 @@ class KeyboardController(object):
         2. 等待上升到2米高度
         3. 按B键开始姿态控制
         4. 使用WSADQEZC进行移动控制
+           或按F键输入目标位置
         5. 需要降落时按L键
         
         注意事项：
@@ -178,6 +180,7 @@ class DroneController(object):
             'l': self._handle_land,
             'b': self._handle_begin_control,
             'p': self._print_status,
+            'f': self._handle_fly_to_position,
             'x': lambda: False
         }
 
@@ -189,7 +192,9 @@ class DroneController(object):
     def _adjust_control(self, axis, value):
         """调整控制值"""
         self.control[axis] += value
-        self._print_status()
+        print("控制位置 - X: %.2f Y: %.2f Z: %.2f YAW: %.2f" % 
+              (self.control['x'], self.control['y'], 
+               self.control['z'], self.control['yaw']))
 
     def _handle_takeoff(self):
         """处理起飞"""
@@ -197,7 +202,8 @@ class DroneController(object):
         self.flight_mode_service(custom_mode='OFFBOARD')  # 切换到OFFBOARD模式
         self.mission_state = 'takeoff'
         print('开始起飞')
-        self._print_status()
+        print("目标位置 - X: %.2f Y: %.2f Z: %.2f" % 
+              (self.takeoff['x'], self.takeoff['y'], self.takeoff['z']))
 
     def _handle_return(self):
         """处理返航"""
@@ -214,14 +220,31 @@ class DroneController(object):
         """开始姿态控制"""
         self.mission_state = 'control'
         print('开始姿态控制')
-        self._print_status()
+        print("控制位置 - X: %.2f Y: %.2f Z: %.2f YAW: %.2f" % 
+              (self.control['x'], self.control['y'], 
+               self.control['z'], self.control['yaw']))
+
+    def _handle_fly_to_position(self):
+        """处理飞行到指定位置"""
+        try:
+            x = float(input("请输入目标X坐标: "))
+            y = float(input("请输入目标Y坐标: "))
+            z = float(input("请输入目标Z坐标: "))
+            
+            self.control['x'] = x
+            self.control['y'] = y
+            self.control['z'] = z
+            
+            print("正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
+            self.mission_state = 'control'
+            
+        except ValueError:
+            print("输入错误！请输入有效的数字")
+            return
 
     def _print_status(self):
         """打印状态信息"""
         print(self.keyboard.help_message)
-        print("控制位置 - X: %.2f Y: %.2f Z: %.2f YAW: %.2f" % 
-              (self.control['x'], self.control['y'], 
-               self.control['z'], self.control['yaw']))
 
     def update_control(self):
         """更新控制指令"""
@@ -348,7 +371,7 @@ class DroneController(object):
 ============================================
           无人机键盘控制系统启动
 ============================================
-作者: XXX
+作者: RichardLiyi
 版本: 1.0
 适用于: Python 2.7 + ROS + MAVROS
 
