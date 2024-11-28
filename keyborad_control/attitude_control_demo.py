@@ -237,26 +237,37 @@ class DroneController(object):
             print("请输入目标位置（输入非数字返回当前位置）：")
             
             # 在等待输入时继续发送当前位置的控制指令
-            self._send_position_target()
-            x = input("目标X坐标: ")
-            self._send_position_target()
-            y = input("目标Y坐标: ")
-            self._send_position_target()
-            z = input("目标Z坐标: ")
-            
-            # 转换输入为浮点数
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            
-            # 更新控制目标
-            self.control['x'] = x
-            self.control['y'] = y
-            self.control['z'] = z
-            
-            print("\n正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
-            
-        except (ValueError, KeyboardInterrupt):
+            while True:
+                self._send_position_target()
+                x = input("目标X坐标: ")
+                self._send_position_target()
+                y = input("目标Y坐标: ")
+                self._send_position_target()
+                z = input("目标Z坐标: ")
+                
+                # 转换输入为浮点数
+                try:
+                    x = float(x)
+                    y = float(y)
+                    z = float(z)
+                    
+                    # 更新控制目标
+                    self.control['x'] = x
+                    self.control['y'] = y
+                    self.control['z'] = z
+                    
+                    print("\n正在飞向目标位置 - X: %.2f Y: %.2f Z: %.2f" % (x, y, z))
+                    break
+                except ValueError:
+                    print("\n输入非法，保持当前位置")
+                    # 恢复当前位置
+                    self.control['x'] = current_x
+                    self.control['y'] = current_y
+                    self.control['z'] = current_z
+                    self.control['yaw'] = current_yaw
+                    return
+                
+        except KeyboardInterrupt:
             print("\n输入取消，保持当前位置")
             # 恢复当前位置
             self.control['x'] = current_x
@@ -271,10 +282,12 @@ class DroneController(object):
 
     def update_control(self):
         """更新控制指令"""
-        if self.mission_state in ['return', 'takeoff']:
+        if self.mission_state in ['takeoff', 'return', 'control']:
+            # 在起飞、返航和控制状态下，发送位置目标
             self._send_position_target()
-        elif self.mission_state == 'control':
-            self._send_attitude_target()
+        elif self.mission_state == 'land':
+            # 降落时切换到AUTO.LAND模式
+            self.flight_mode_service(custom_mode='AUTO.LAND')
 
     def _send_position_target(self):
         """发送位置控制指令"""
@@ -288,11 +301,11 @@ class DroneController(object):
                           PositionTarget.IGNORE_AFZ +
                           PositionTarget.IGNORE_YAW_RATE)
 
-        # 设置目标位置
-        target.position.x = self.takeoff['x']
-        target.position.y = self.takeoff['y']
-        target.position.z = self.takeoff['z']
-        target.yaw = self.takeoff['yaw']
+        # 设置目标位置为当前控制位置
+        target.position.x = self.control['x']
+        target.position.y = self.control['y']
+        target.position.z = self.control['z']
+        target.yaw = self.control['yaw']
 
         # 设置header
         target.header.stamp = rospy.Time.now()
