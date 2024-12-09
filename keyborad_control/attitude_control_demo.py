@@ -435,7 +435,7 @@ class DroneController(object):
             self.mission_state = 'control'
             
             # 设置起飞目标位置并持续发送控制指令
-            takeoff_target = {'x': 0, 'y': 0, 'z': 5, 'yaw': 0}
+            takeoff_target = {'x': 0, 'y': 0, 'z': 3.87, 'yaw': 0}
             print('开始Z轴位置偏置实验')
             print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
                   (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
