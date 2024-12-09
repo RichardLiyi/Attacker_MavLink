@@ -459,7 +459,7 @@ class DroneController(object):
             # 计算循环次数
             cycles = int(experiment_time / T)
             direction = 1  # 1 表示正向，-1 表示反向
-            base_height = 5  # 基础高度
+            base_height = 3.87  # 基础高度
             
             for _ in range(cycles):
                 # 设置目标位置
