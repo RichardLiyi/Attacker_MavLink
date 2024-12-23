@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import rospy
 from mavros_msgs.msg import Altitude
 
 class AltitudeBiasNode:
     def __init__(self):
-        # 可配置的偏置值
+        # 偏置参数
         self.relative_bias = rospy.get_param('~relative_bias', 1.0)
         self.amsl_bias = rospy.get_param('~amsl_bias', 0.0)
         self.local_bias = rospy.get_param('~local_bias', 0.0)
