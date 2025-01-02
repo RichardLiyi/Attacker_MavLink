@@ -119,7 +119,7 @@ class KeyboardController(object):
             self.drone_controller.control['z'] += 0.1
         elif key == 'e':
             self.drone_controller.control['z'] -= 0.1
-        elif key == 'z':
+        elif key == 'z':takeo
             self.drone_controller.control['yaw'] += 0.1
         elif key == 'c':
             self.drone_controller.control['yaw'] -= 0.1
@@ -268,7 +268,7 @@ class DroneController(object):
         self.mission_state = 'control'
         
         # 设置起飞目标位置并持续发送控制指令
-        takeoff_target = {'x': 0, 'y': 0, 'z': 2, 'yaw': 0}
+        takeoff_target = {'x': 3, 'y': 3, 'z': 3, 'yaw': 0}
         print('开始X轴位置偏置实验')
         print("起飞位置 - X: %.2f Y: %.2f Z: %.2f" % 
                 (takeoff_target['x'], takeoff_target['y'], takeoff_target['z']))
