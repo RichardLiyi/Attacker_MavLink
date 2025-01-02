@@ -119,7 +119,7 @@ class KeyboardController(object):
             self.drone_controller.control['z'] += 0.1
         elif key == 'e':
             self.drone_controller.control['z'] -= 0.1
-        elif key == 'z':takeo
+        elif key == 'z':
             self.drone_controller.control['yaw'] += 0.1
         elif key == 'c':
             self.drone_controller.control['yaw'] -= 0.1
@@ -131,13 +131,16 @@ class KeyboardController(object):
             self.drone_controller._handle_fly_to_position()
         elif key == 'o':
             print("\n请选择实验类型：")
+            print("0. 悬停实验")
             print("1. 水平X位置偏置实验")
             print("2. 水平Y位置偏置实验")
             print("3. 高度Z位置偏置实验")
             print("4. 偏航角Yaw偏置实验")
             try:
-                choice = int(raw_input("请输入选项（1-4）: "))
-                if choice == 1:
+                choice = int(raw_input("请输入选项（0-4）: "))
+                if choice == 0:
+                    self.drone_controller._handle_hover_experiment()
+                elif choice == 1:
                     self.drone_controller._handle_x_offset_experiment()
                 elif choice == 2:
                     self.drone_controller._handle_y_offset_experiment()
@@ -238,13 +241,16 @@ class DroneController(object):
             self._handle_land()
         elif key == 'o':
             print("\n请选择实验类型：")
+            print("0. 悬停实验")
             print("1. 水平X位置偏置实验")
             print("2. 水平Y位置偏置实验")
             print("3. 高度Z位置偏置实验")
             print("4. 偏航角Yaw偏置实验")
             try:
-                choice = int(raw_input("请输入选项（1-4）: "))
-                if choice == 1:
+                choice = int(raw_input("请输入选项（0-4）: "))
+                if choice == 0:
+                    self._handle_hover_experiment()
+                elif choice == 1:
                     self._handle_x_offset_experiment()
                 elif choice == 2:
                     self._handle_y_offset_experiment()
@@ -368,6 +374,73 @@ class DroneController(object):
             self.control['y'] = current_y
             self.control['z'] = current_z
             self.control['yaw'] = current_yaw
+            return
+
+    def _handle_hover_experiment(self):
+        """处理悬停实验"""
+        if not self.drone_state.arm_state:
+            print("\n请先解锁并起飞")
+            return
+            
+        if self.mission_state != 'control':
+            print("\n请先按B键开始姿态控制")
+            return
+            
+        try:
+            # 获取实验时长
+            duration = float(raw_input("\n请输入悬停时长（秒）: "))
+            if duration <= 0:
+                print("时长必须大于0秒")
+                return
+                
+            print("\n开始悬停实验")
+            print("目标位置 - X: 3.00 Y: 3.00 Z: 3.00")
+            print("悬停时长: %.1f秒" % duration)
+            
+            # 设置目标位置
+            target = PositionTarget()
+            target.coordinate_frame = PositionTarget.FRAME_LOCAL_NED
+            target.type_mask = (PositionTarget.IGNORE_VX + 
+                              PositionTarget.IGNORE_VY +
+                              PositionTarget.IGNORE_VZ + 
+                              PositionTarget.IGNORE_AFX +
+                              PositionTarget.IGNORE_AFY + 
+                              PositionTarget.IGNORE_AFZ +
+                              PositionTarget.IGNORE_YAW_RATE)
+            
+            # 设置目标位置
+            target.position.x = 3.0
+            target.position.y = -3.0  # 注意y轴的符号转换
+            target.position.z = 3.0
+            target.yaw = 0.0
+            
+            # 设置header
+            target.header.frame_id = "map"
+            
+            # 记录开始时间
+            start_time = rospy.Time.now()
+            rate = rospy.Rate(10)  # 10Hz的控制频率
+            
+            print("\n正在执行悬停实验...")
+            
+            while not rospy.is_shutdown():
+                # 检查是否达到实验时长
+                if (rospy.Time.now() - start_time).to_sec() > duration:
+                    print("\n实验完成，准备降落")
+                    self._safe_land()
+                    break
+                    
+                # 更新时间戳并发布位置目标
+                target.header.stamp = rospy.Time.now()
+                self.target_motion_pub.publish(target)
+                rate.sleep()
+                
+        except ValueError:
+            print("\n请输入有效的数字！")
+            return
+        except KeyboardInterrupt:
+            print("\n实验被用户中断")
+            self._safe_land()
             return
 
     def _handle_x_offset_experiment(self):
