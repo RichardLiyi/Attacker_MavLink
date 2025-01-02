@@ -1,4 +1,4 @@
-#-*- coding: UTF-8<|start_header|><|start_header|>assistant<|end_header|>
+#-*- coding: UTF-8 
 
 import rospy
 import tty, termios
@@ -51,7 +51,7 @@ class DroneState(object):
 
 class KeyboardController(object):
     """键盘控制类，处理键盘输入和控制逻辑"""
-    def __init__(self):
+    def __init__(self, drone_controller):
         self.help_message = '''
         ====== 无人机键盘控制系统 ======
         
@@ -94,6 +94,7 @@ class KeyboardController(object):
             'position': 0.2,
             'yaw': 0.05
         }
+        self.drone_controller = drone_controller
 
     def get_key(self):
         """获取键盘输入"""
@@ -104,11 +105,60 @@ class KeyboardController(object):
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
         return key.lower()  # 转换为小写，实现大小写不敏感
 
+    def process_keyboard_input(self, key):
+        """处理键盘输入"""
+        if key == 'w':
+            self.drone_controller.control['x'] += 0.1
+        elif key == 's':
+            self.drone_controller.control['x'] -= 0.1
+        elif key == 'a':
+            self.drone_controller.control['y'] += 0.1
+        elif key == 'd':
+            self.drone_controller.control['y'] -= 0.1
+        elif key == 'q':
+            self.drone_controller.control['z'] += 0.1
+        elif key == 'e':
+            self.drone_controller.control['z'] -= 0.1
+        elif key == 'z':
+            self.drone_controller.control['yaw'] += 0.1
+        elif key == 'c':
+            self.drone_controller.control['yaw'] -= 0.1
+        elif key == 't':
+            self.drone_controller._handle_takeoff()
+        elif key == 'l':
+            self.drone_controller._handle_land()
+        elif key == 'f':  # 添加F键处理
+            self.drone_controller._handle_fly_to_position()
+        elif key == 'o':
+            print("\n请选择实验类型：")
+            print("1. 水平X位置偏置实验")
+            print("2. 水平Y位置偏置实验")
+            print("3. 高度Z位置偏置实验")
+            print("4. 偏航角Yaw偏置实验")
+            try:
+                choice = int(raw_input("请输入选项（1-4）: "))
+                if choice == 1:
+                    self.drone_controller._handle_x_offset_experiment()
+                elif choice == 2:
+                    self.drone_controller._handle_y_offset_experiment()
+                elif choice == 3:
+                    self.drone_controller._handle_z_offset_experiment()
+                elif choice == 4:
+                    self.drone_controller._handle_yaw_offset_experiment()
+                else:
+                    print("无效的选项！")
+            except ValueError:
+                print("请输入有效的数字！")
+        elif key == 'x':
+            print("退出程序")
+            return False
+        return True
+
 class DroneController(object):
     """无人机控制类，整合状态监控和控制执行"""
     def __init__(self, uav_type, control_type):
         self.drone_state = DroneState()
-        self.keyboard = KeyboardController()
+        self.keyboard = KeyboardController(self)  # 修改KeyboardController的初始化
         self.control_type = control_type
         self.mission_state = None
         
@@ -763,7 +813,7 @@ class DroneController(object):
         def input_thread():
             while True:
                 key = self.keyboard.get_key()
-                if not self.process_keyboard_input(key):
+                if not self.keyboard.process_keyboard_input(key):
                     break
         
         thread = threading.Thread(target=input_thread)

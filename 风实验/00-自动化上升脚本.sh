@@ -16,7 +16,7 @@ run_in_new_tab() {
 
 # 第一步：启动 PX4 仿真环境
 echo "正在启动 PX4 仿真环境..."
-run_in_new_tab "PX4 仿真环境" "roslaunch px4 windy.launch"
+run_in_new_tab "PX4 仿真环境" "roslaunch  px4 windy.launch"
 sleep 5
 
 # 第二步：启动 MAVProxy 中继
