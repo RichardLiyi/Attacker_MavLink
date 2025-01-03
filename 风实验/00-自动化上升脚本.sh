@@ -34,4 +34,9 @@ echo "正在启动无人机控制及通信中继节点..."
 run_in_new_tab "无人机控制及通信中继节点" "/usr/bin/python ${SCRIPT_DIR}/attitude_control_demo.py iris angle"
 sleep 3
 
+# 最后：启动风场控制节点
+echo "正在启动风场控制..."
+chmod +x "$SCRIPT_DIR/wind_control.py"  # 确保脚本有执行权限
+run_in_new_tab "风场控制" "python2 $SCRIPT_DIR/wind_control.py"
+
 echo "脚本完成，所有步骤已启动。"
