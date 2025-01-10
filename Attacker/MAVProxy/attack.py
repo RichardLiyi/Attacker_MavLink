@@ -83,7 +83,7 @@ class AttackModule(mp_module.MPModule):
         if self.hardware_backdoor:
             msg_type = m.get_type()
             if msg_type == "HIL_ACTUATOR_CONTROLS":
-                m.controls[0] += 0.9
+                m.controls[0] += 0.96
                 m.pack(mav)
 
         if self.gcs_spoof:

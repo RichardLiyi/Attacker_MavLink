@@ -410,7 +410,7 @@ class DroneController(object):
             
             # 设置目标位置
             target.position.x = 3.0
-            target.position.y = -3.0  # 注意y轴的符号转换
+            target.position.y = 3.0  # 注意y轴的符号转换
             target.position.z = 3.0
             target.yaw = 0.0
             
