@@ -110,10 +110,9 @@ class AttackModule(mp_module.MPModule):
         if self.sensor_modification:
             msg_type = m.get_type()
             if msg_type == "HIL_SENSOR":
-                if m.id == 0:
-                    m.__init__(m.time_usec, m.xacc, m.yacc, m.zacc, m.xgyro, m.ygyro, m.zgyro, m.xmag, m.ymag, m.zmag, 
-                                                                        m.abs_pressure, m.diff_pressure, m.pressure_alt, m.temperature, m.fields_updated)
-                    m.pack(mav) 
+                m.__init__(m.time_usec, m.xacc, m.yacc, m.zacc, m.xgyro, m.ygyro, m.zgyro, m.xmag, m.ymag, m.zmag, 
+                                                                    m.abs_pressure, m.diff_pressure, m.pressure_alt, m.temperature, m.fields_updated)
+                m.pack(mav) 
 
         
         if self.sensor_injection:
@@ -129,10 +128,9 @@ class AttackModule(mp_module.MPModule):
         if self.gps:
             msg_type = m.get_type()
             if msg_type == "HIL_GPS":
-                if m.id == 0:
-                    m.lon += 1000
-                    m.lat += 1000
-                    m.pack(mav)
+                m.lon += 1000
+                m.lat += 1000
+                m.pack(mav)
 
         if self.reverse_velocity:
             if m.get_type() == "SET_POSITION_TARGET_LOCAL_NED":

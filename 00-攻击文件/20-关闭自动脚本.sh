@@ -24,7 +24,12 @@ close_terminal_tab() {
 
     # 关闭终端标签页
     echo "尝试关闭 $process_name 的终端标签页..."
-    xdotool search --onlyvisible --name "$process_name" windowactivate key Ctrl+Shift+W
+    window_id=$(xdotool search --onlyvisible --name "$process_name")
+    if [ -n "$window_id" ]; then
+        xdotool windowactivate "$window_id" key Ctrl+Shift+W keyup Ctrl+Shift+W
+    else
+        echo "未找到 $process_name 的窗口，跳过关闭操作。"
+    fi
 }
 
 # 关闭 PX4 仿真环境
